@@ -1,3 +1,3 @@
 # SWBS
-School Wrieless Spearding System
+School Wrieless broadcasting System
 We are still working on it...
