@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>輸入訊息</title>
+    <style>
+        body {
+            background-color: #262626;
+            -webkit-text-fill-color: #FFFFFF;
+        }
+
+        textarea {
+            width: 90%;
+            height: 30vh;
+            margin: 0 auto;
+            display: block;
+            background-color: #262626;
+            -webkit-text-fill-color: #FFFFFF;
+            font-size: 20px;
+        }
+
+        input {
+            width: 60px;
+            height: 40px;
+            text-align: center;
+            color: #294c85;
+            background-color: #4c4c4c;
+            border: none;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+        }
+    </style>
+</head>
+
+<body>
+    <h1>輸入文本</h1>
+    <form method="POST" action="/">
+        <label for="user_input">輸入要傳送之文字</label>
+        <textarea name="user_input" rows="5" cols="40"></textarea>
+        <br>
+        <input type="submit" value="Send">
+    </form>
+
+</body>
+
+</html>

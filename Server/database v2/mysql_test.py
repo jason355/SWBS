@@ -35,11 +35,12 @@ def show_all_tables():
         print(row)
 
 
+        
 cnx = mysql.connector.connect(
     host="127.0.0.1",
     user="root",
     password="escko83@4L",
-    database="message_database"
+    database="message"
 )
 
 cursor = cnx.cursor()

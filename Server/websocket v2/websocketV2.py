@@ -1,0 +1,102 @@
+import asyncio
+import json
+import websockets
+import mysql.connector
+from mysql.connector import Error
+import aiomysql
+
+# 自定義連接池參數
+pool_config = {
+    "host": '127.0.0.1',
+    "port": 3306,
+    "user": 'root',
+    "password": 'escko83@4L',
+    "db": 'message',
+    "maxsize": 100,
+}
+
+
+connected_clients = {}
+data = []
+
+
+async def handle_message(websocket, path):
+    try:
+        while True:
+            message = await websocket.recv()
+            if websocket not in connected_clients:
+                connected_clients[websocket] = message
+                print(
+                    f"*added new class*  class : {connected_clients[websocket]}")
+    finally:
+        # 當客戶端斷開連接時，從已連接客戶端集合中移除
+        del connected_clients[websocket]
+
+
+async def send_message_to_user(message, to_where, id):
+    for websocket, cls in connected_clients.items():
+        if cls == to_where:
+            await websocket.send(message)
+
+            # break
+    cursor.execute(f"update data set isNew = 0 where id = {id}")
+    connection.commit()
+
+
+async def New_data_added():
+    # 建立連接池
+    pool = await aiomysql.create_pool(**pool_config)
+
+    while True:
+        async with pool.acquire() as connection:
+            async with connection.cursor() as cursor:
+                await cursor.execute("SELECT * FROM data WHERE isNew = 1")
+                check = await cursor.fetchall()
+                if check:
+                    for datas in check:
+                        record = {
+                            'teacher': datas[1],
+                            'fromWhere': datas[2],
+                            'content': datas[3],
+                            'sendTime': str(datas[4]),  #
+                            'isNew': datas[6]
+                        }
+                        data.append(record)
+                        response = json.dumps(data, ensure_ascii=False)
+                        print(response)
+                        await send_message_to_user(response, datas[5], datas[0])
+                await cursor.execute("UPDATE data SET isNew = 0 WHERE isNew = 1")
+                await connection.commit()
+        await asyncio.sleep(3)
+
+
+async def start_server():
+    server = await websockets.serve(handle_message, '192.168.0.3', 5000)
+    print('WebSocket server started')
+    asyncio.create_task(New_data_added())
+    await asyncio.Future()
+
+if __name__ == '__main__':
+
+    try:
+        # 連接 MySQL/MariaDB 資料庫
+        connection = mysql.connector.connect(
+            host='127.0.0.1',          # 主機名稱
+            database='message',  # 資料庫名稱
+            user='root',        # 帳號
+            password='escko83@4L')  # 密碼
+
+        if connection.is_connected():
+            # 顯示資料庫版本
+            db_Info = connection.get_server_info()
+            print("資料庫版本：", db_Info)
+
+            # 顯示目前使用的資料庫
+            cursor = connection.cursor()
+            cursor.execute("SELECT DATABASE();")
+            record = cursor.fetchone()
+            print("目前使用的資料庫：", record)
+
+            asyncio.run(start_server())
+    except Error as e:
+        print("資料庫連接失敗：", e)

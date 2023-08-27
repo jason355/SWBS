@@ -1,0 +1,3 @@
+
+global num
+num = False

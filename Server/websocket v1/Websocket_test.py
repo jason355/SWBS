@@ -21,7 +21,7 @@ async def handle_message(websocket, path):
 
 
 async def start_server():
-    async with websockets.serve(handle_message, '192.168.1.110', 8000):
+    async with websockets.serve(handle_message, '192.168.1.110', 5000):
         print('WebSocket server started')
         await asyncio.Future()  # 持续执行服务器，直到手动停止
 
