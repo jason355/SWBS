@@ -8,8 +8,13 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 
+
+
+
 # create clients list
 connected_clients = {}
+
+
 
 try:
     # create database engine
@@ -74,6 +79,8 @@ async def send_message_to_user(message, dest):
                 print("Error sending message to user : ", e)
             break
 
+
+
 async def New_data_added():
     # detect new datas duplicately
     while True:
@@ -129,9 +136,6 @@ async def New_data_added():
 
 
 
-
-
-
 async def start_server():
     # start the server
     server = await websockets.serve(handle_message, '192.168.56.1', 8000)
@@ -140,27 +144,9 @@ async def start_server():
     asyncio.create_task(New_data_added())
     await asyncio.Future()
 
+
+
 if __name__ == '__main__':
+    # start server
+    asyncio.run(start_server())
 
-    try:
-        # connect to mySQL database
-        connection = mysql.connector.connect(
-            host='127.0.0.1',             # host name
-            database='dbV1',              # database name
-            user='root',                  # account
-            password='@@nccu1st353@csc')  # password
-
-        if connection.is_connected():
-            # show the database version
-            db_Info = connection.get_server_info()
-            print("database version：", db_Info)
-
-            # show the database which currently in use
-            cursor = connection.cursor()
-            cursor.execute("SELECT DATABASE();")
-            record = cursor.fetchone()
-            print("database currently in use：", record)
-            # start server
-            asyncio.run(start_server())
-    except Error as e:
-        print("Error to connect database ：", e)
