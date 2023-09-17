@@ -1,7 +1,6 @@
 import asyncio
 import json
 import websockets
-import mysql.connector
 from mysql.connector import Error
 from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
