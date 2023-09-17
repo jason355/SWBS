@@ -26,7 +26,7 @@ try:
     class data_access(Base):
         __tablename__ = 'data'
         id = Column(Integer, primary_key=True)
-        name = Column(String(15), unique=True)
+        name = Column(String(15))
         content = Column(String(300))
         is_new = Column(Integer)
         time = Column(String(25))
