@@ -73,6 +73,7 @@ async def send_message_to_user(message, dest):
             try:
                 # send message
                 await websocket.send(message)
+                # inform message sending successful
                 return "s"
             except Error as e:
                 print("Error sending message to user : ", e)
