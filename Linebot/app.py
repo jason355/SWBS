@@ -1,4 +1,4 @@
-
+import json
 import re
 import database as db
 from linebot.models.flex_message import FlexContainer
