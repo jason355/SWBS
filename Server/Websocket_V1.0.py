@@ -1,3 +1,8 @@
+#    This version of server is the most primitive one, which made by connection pool, 
+#    although it can still work on some basic funtion, 
+#    but there's lots of bugs and mess codes which without a regular comments
+
+
 import asyncio
 import json
 import websockets

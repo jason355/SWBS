@@ -24,6 +24,7 @@ message_api = MessagingApi(
 sendClassString = " "
 send_class_list = []
 data = {}
+tea_infor = {}
 user_states = {}
 global pattern
 pattern = r'(\d+)[, ]*'
@@ -107,7 +108,7 @@ def handle_message(event):
     text = event.message.text
     user_id = event.source.user_id
     global data
-
+    global tea_infor
     global send_class_list
 
     global sendClassString
@@ -138,17 +139,18 @@ def handle_message(event):
         elif user_state == "廣播訊息階段2-1":
             if text.isdigit() and len(text) == 3:
                 sendClassString = text
-                if int(text[0:1]) == 7 or int(text[0:1]) == 8 or int(text[0:1]) == 9:
-                    data['des_grade'] = "0" + text[0:1]
-                    data['des_class'] = text[2]
+                if int(text[2]) < 6 and int(text[2]) > 0:
+                    if int(text[0:1]) == 7 or int(text[0:1]) == 8 or int(text[0:1]) == 9:
+                        data['des_grade'] = "0" + text[0:1]
+                        data['des_class'] = text[2]
+                    else:
+                        data['des_grade'] = text[0:2]
+                        data['des_class'] = text[2]
+                    reply_message = sendConfirm(event, user_id)
+                    note = True
+                    user_states[user_id] = "空閒"
                 else:
-                    data['des_grade'] = text[0:2]
-                    data['des_class'] = text[2]
-
-            # reply_message = "確認!"  # i don't knw how to write\
-            reply_message = sendConfirm(event)
-            note = True
-            user_states[user_id] = "廣播訊息階段3"
+                    reply_message = "請輸入在範圍內的班級"
 
         elif user_state == "廣播訊息階段2-2":
             number_groups = re.findall(pattern, text)
@@ -158,7 +160,6 @@ def handle_message(event):
                         reply_message = "全體廣播"
                         sendClassString = "全體廣播"
                         break
-                        # 資料庫寫入全體
                     else:
                         if int(group) <= 9 or int(group) >= 2:
                             send_class_list.append(text)
@@ -176,10 +177,19 @@ def handle_message(event):
 
             user_states[user_id] = "廣播訊息階段2-3"
 
-        elif user_state == "廣播訊息階段3":
-            reply_message = "輸入成功!"
-            # text 存入資料庫
-            # datafun.insertTeaInfo(LineID=user_id, teacherName=teacher, fromWhere=frWhere)
+        elif text == "confirm_yes":
+            reply_message = "成功發布訊息"
+            user = db.findTeacher(user_id)
+            if user != False and user != "Error":
+                data['teacher'] = user.teacher
+                data['office'] = user.fromWhere
+                db.insertData(data)
+            else:
+                reply_message = "插入失敗"
+
+        elif text == "confirm_no":
+            reply_message = "重新發送訊息\n請輸入您的廣播內容"
+            user_states[user_id] = "廣播訊息階段1"
 
         elif user_state == "空閒":
             if text == "!":
@@ -187,9 +197,14 @@ def handle_message(event):
 
        # 設定教師個人資訊
         elif user_state == "設定教師個人資訊階段1":
+            tea_infor['teacher'] = text
             reply_message = "輸入成功!\n 請輸入處室"
             user_states[user_id] = "設定教師個人資訊階段2"
-
+        elif user_state == "設定教師個人資訊階段2":
+            tea_infor['fromWhere'] = text
+            reply_message = "成功"
+            db.insertTeaInfor(user_id, tea_infor)
+            user_states[user_id] = "空閒"
         # 其他
         elif user_state == "其他":
             reply_message = "還在開發中"
@@ -198,10 +213,7 @@ def handle_message(event):
         if text == "!":
             sendButton(event)
             note = True
-        elif text == "confirm_yes":
-            sendyes(event)
-        elif text == '日期與時間':
-            senddatetime(event)
+
     if note == False:
         line_bot_api.reply_message(
             event.reply_token, TextSendMessage(text=reply_message))
@@ -209,40 +221,32 @@ def handle_message(event):
         note = False
 
 
-def sendConfirm(event):
-    try:
-        message = TemplateSendMessage(
-            alt_text='Confirm template',
-            template=ConfirmTemplate(
-                # 把廣播訊息重複在此
-                text=f"你確定要發送此則訊息嗎？（請檢察將送出的訊息是否正確）\n \n 廣播訊息:{data['content']}\n 傳送班級:{sendClassString}",
-                actions=[
-                    MessageTemplateAction(
-                        label='是 我已確認',
-                        text='confirm_yes'
-                    ),
-                    MessageTemplateAction(
-                        label='NO 訊息有誤',
-                        text='confirm_no'
-                    ),
-                ]
-            )
+def sendConfirm(event, userid):
+    # try:
+    message = TemplateSendMessage(
+        alt_text='Confirm template',
+        template=ConfirmTemplate(
+            # 把廣播訊息重複在此
+            text=f"你確定要發送此則訊息嗎？（請檢察將送出的訊息是否正確）",
+            actions=[
+                MessageTemplateAction(
+                    label='是 我已確認',
+                    text='confirm_yes'
+                ),
+                MessageTemplateAction(
+                    label='NO 訊息有誤',
+                    text='confirm_no'
+                ),
+            ]
         )
+    )
+    confirmData = TextSendMessage(
+        text=f"傳送班級:{sendClassString} \n\n 廣播訊息:\n{data['content']}")
+    line_bot_api.push_message(userid, confirmData)
+    line_bot_api.reply_message(event.reply_token, message)
 
-        line_bot_api.reply_message(event.reply_token, message)
-    except:
-        print("Error sendConfirm")
-
-
-def sendyes(event):
-    try:
-        message = TextSendMessage(
-            text="我們將盡快送出廣播訊息",
-        )
-        line_bot_api.reply_message(event.reply_token, message)
-    except:
-        line_bot_api.reply_message(
-            event.reply_token, TextSendMessage(text="發生錯誤(sendyes)!"))
+    # except:
+    #     print("Error sendConfirm")
 
 
 def senddatetime(event):
