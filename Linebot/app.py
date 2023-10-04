@@ -257,6 +257,64 @@ def sendConfirm(event, userid):
     # except:
     #     print("Error sendConfirm")
 
+        # 當使用者選擇"教師個人資訊"時觸發的處理函數
+# @handler.add(PostbackEvent)
+# def handle_postback(event):
+#     user_id = event.source.user_id
+#     backdata = dict(parse_qsl(event.postback.data))
+
+#     if backdata.get("action") == "教師個人資訊":
+#         # 判斷該用戶是否已經輸入過個人資訊
+#         user_info = findTeacher(user_id)
+        
+#         if user_info:
+#             # 使用者已輸入過個人資訊，詢問是否要更新
+#             reply_text = "您已經輸入過個人資訊，是否要更新？"
+#             confirm_message = ConfirmTemplate(
+#                 text=reply_text,
+#                 actions=[
+#                     PostbackTemplateAction(
+#                         label='是',
+#                         data='action=confirm_update'
+#                     ),
+#                     PostbackTemplateAction(
+#                         label='否',
+#                         data='action=confirm_no'
+#                     )
+#                 ]
+#             )
+#             message = TemplateSendMessage(
+#                 alt_text='確認是否更新個人資訊',
+#                 template=confirm_message
+#             )
+#             line_bot_api.reply_message(event.reply_token, message)
+#         else:
+#             # 使用者尚未輸入過個人資訊，要求輸入姓名
+#             reply_text = "請輸入您的姓名"
+#             user_states[user_id] = "設定教師個人資訊階段1"
+#             line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
+
+
+#     # 當使用者選擇更新個人資訊時觸發的處理函數
+#     elif backdata.get("action") == "confirm_update":
+#         # 刪除原先輸入的個人資訊
+#         delete_teacher_info(user_id)
+        
+#         # 重新要求輸入姓名
+#         reply_text = "請重新輸入您的姓名"
+#         user_states[user_id] = "設定教師個人資訊階段1"
+#         line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
+
+
+# # 刪除原先輸入的個人資訊
+# def delete_teacher_info(user_id):
+#     try:
+#         session = Session()
+#         session.query(tea_infor).filter(tea_infor.lineID == user_id).delete()
+#         session.commit()
+#         session.close()
+#     except SQLAlchemyError as e:
+#         print(f"Error: {e}")
 
 def senddatetime(event):
     try:
