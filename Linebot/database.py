@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, Text, MetaData, Table, SmallInteger
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, Text, MetaData, update, SmallInteger
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
@@ -20,12 +20,22 @@ def findTeacher(lineId):
 
 def insertTeaInfor(lineId, map={}):
     try:
-        session = Session()
-        new_data = tea_infor(
+        if findTeacher(lineId=lineId) == False:
+            session = Session()
+            new_data = tea_infor(
             lineID=lineId, teacher=map['teacher'], fromWhere=map['fromWhere'])
-        session.add(new_data)
-        session.commit()
-        session.close()
+            session.add(new_data)
+            session.commit()
+            session.close()
+            session = Session()
+        elif findTeacher(lineId=lineId) != "Error":
+            session = Session()
+            get = findTeacher(lineId)
+            new_data = update(tea_infor).where(id=get.id).values(teacher=map['teacher'], fromWhere=map['fromWhere'])
+            session.execute(new_data)
+            session.commit()
+            session.close()
+
     except:
         print("Someting went wrong when inserting teacher information")
 
@@ -45,7 +55,7 @@ def insertData(map={}):
 try:
 
     engine = create_engine(
-        "mysql+mysqlconnector://root:escko83%404L@localhost/message", pool_size=50)
+        "mysql+mysqlconnector://root:ahsnccu@localhost/dbv1", pool_size=50)
     Base = declarative_base()
 
     class tea_infor(Base):
@@ -69,5 +79,6 @@ try:
 
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
+
 except SQLAlchemyError as e:
     print(f"Error: code {e} ")
