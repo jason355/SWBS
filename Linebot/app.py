@@ -1,6 +1,6 @@
 import json
 import re
-import database as db
+import database_lastest as db
 from linebot.models.flex_message import FlexContainer
 from datetime import datetime
 from urllib.parse import parse_qsl
@@ -14,9 +14,8 @@ app = Flask(__name__)
 
 
 # mydb = datafun.initialize_db()
-line_bot_api = LineBotApi(
-    'your token')
-handler = WebhookHandler('')
+line_bot_api = LineBotApi('X8irZcY8i/i8v5vSZshQ/PEUXKzX4twNZc3v+7OgOnDy12/oSrAAtc90bpmlNuRIFAPK0DDWaqYsaSXSdW3/d2q54U82JCX1RGBeFL2+sAfWT0O/uK9MrlOnwtxdnpS7+M3n4QKI58Tix4odkwJFWQdB04t89/1O/w1cDnyilFU=')
+handler = WebhookHandler('d060df7ed691aca2f1cf8a2aa58620ac')
 
 
 sendClassString = " "
@@ -47,8 +46,8 @@ def sendButton(event):
             alt_text='按鈕樣板',
             template=ButtonsTemplate(
                 thumbnail_image_url='https://www.ahs.nccu.edu.tw/ischool/resources/WID_0_13_0ce2b9c79ca44206e2a2bf72c2010f148662e9ed/463eb099b18cfc7b518b81007c909b64.png',
-                title='按鈕選單test',
-                text='請選擇服務：',
+                title='請選擇服務：',
+                text='請務必先點選"教師個人資訊"按鈕以設定身分',
                 actions=[
                     # URITemplateAction(
                     #     label='連結校網',
@@ -56,13 +55,13 @@ def sendButton(event):
                     #     uri='https://ahs.nccu.edu.tw/home'
                     # ),
                     PostbackTemplateAction(
-                        label='發送廣播 [上限300字]',
-                        data='action=文字廣播'
-                    ),
-                    PostbackTemplateAction(
                         label='教師個人資訊',
                         data='action=教師個人資訊'
                     ),
+                    PostbackTemplateAction(
+                        label='發送廣播 [上限300字]',
+                        data='action=文字廣播'
+                    ),                   
                     PostbackTemplateAction(
                         label='其他',
                         data='action=其他'
@@ -74,6 +73,14 @@ def sendButton(event):
     except:
         line_bot_api.reply_message(
             event.reply_token, TextSendMessage(text='發生錯誤！請洽鍾2鍾'))
+
+#教師初次登入
+@handler.add(FollowEvent)
+def handle_follow(event):
+    user_id = event.source.user_id
+    reply_message = "老師好, 請輸入您的名稱"
+    user_states[user_id] = "設定教師個人資訊階段1"
+    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_message))
 
 
 @handler.add(PostbackEvent)
@@ -95,12 +102,28 @@ def handle_postback(event):
 
     elif backdata.get('action') == 'sell':
         sendData_sell(event, backdata)
+    
+    elif backdata.get('action') == "confirm_yes":
+            reply_text = "成功發布訊息"
+            user = db.findTeacher(user_id)
+            if user != False and user != "Error":
+                data['teacher'] = user.teacher
+                data['office'] = user.fromWhere
+                db.insertData(data)
+            else:
+                reply_message = "插入失敗"
+
+    elif backdata.get('action') == "confirm_no":
+        reply_text = "訊息有誤 請重新輸入訊息\n請輸入您的廣播內容"
+        user_states[user_id] = "廣播訊息階段1"
+
     line_bot_api.reply_message(
         event.reply_token, TextSendMessage(text=reply_text))
+    
+
+
 
 # 處理文字訊息
-
-
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     text = event.message.text
@@ -137,18 +160,20 @@ def handle_message(event):
         elif user_state == "廣播訊息階段2-1":
             if text.isdigit() and len(text) == 3:
                 sendClassString = text
-                if int(text[2]) < 6 and int(text[2]) > 0:
+                if int(text[2]) <= 6 and int(text[2]) > 0:
                     if int(text[0:1]) == 7 or int(text[0:1]) == 8 or int(text[0:1]) == 9:
                         data['des_grade'] = "0" + text[0:1]
                         data['des_class'] = text[2]
                     else:
                         data['des_grade'] = text[0:2]
                         data['des_class'] = text[2]
-                    reply_message = sendConfirm(event, user_id)
+                    sendConfirm(event, user_id)
                     note = True
                     user_states[user_id] = "空閒"
                 else:
                     reply_message = "請輸入在範圍內的班級"
+            else:
+                reply_message = "請輸入班級"
 
         elif user_state == "廣播訊息階段2-2":
             number_groups = re.findall(pattern, text)
@@ -174,24 +199,11 @@ def handle_message(event):
                     reply_message = "請輸入有效代碼"
 
             user_states[user_id] = "廣播訊息階段2-3"
-
-        elif text == "confirm_yes":
-            reply_message = "成功發布訊息"
-            user = db.findTeacher(user_id)
-            if user != False and user != "Error":
-                data['teacher'] = user.teacher
-                data['office'] = user.fromWhere
-                db.insertData(data)
-            else:
-                reply_message = "插入失敗"
-
-        elif text == "confirm_no":
-            reply_message = "重新發送訊息\n請輸入您的廣播內容"
-            user_states[user_id] = "廣播訊息階段1"
-
+        
         elif user_state == "空閒":
             if text == "!":
                 sendButton(event)
+                note=True
 
        # 設定教師個人資訊
         elif user_state == "設定教師個人資訊階段1":
@@ -208,13 +220,12 @@ def handle_message(event):
             reply_message = "還在開發中"
 
     else:  # 改上去
-        if text == "!":
+        if text == "!" or text == "！":
             sendButton(event)
             note = True
 
     if note == False:
-        line_bot_api.reply_message(
-            event.reply_token, TextSendMessage(text=reply_message))
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_message))
     else:
         note = False
 
@@ -227,13 +238,13 @@ def sendConfirm(event, userid):
             # 把廣播訊息重複在此
             text=f"你確定要發送此則訊息嗎？（請檢察將送出的訊息是否正確）",
             actions=[
-                MessageTemplateAction(
-                    label='是 我已確認',
-                    text='confirm_yes'
+                PostbackTemplateAction(
+                    label='YES 我已確認',                
+                    data='action=confirm_yes'
                 ),
-                MessageTemplateAction(
+                PostbackTemplateAction(
                     label='NO 訊息有誤',
-                    text='confirm_no'
+                    data='action=confirm_no'
                 ),
             ]
         )
@@ -283,10 +294,9 @@ def senddatetime(event):
                 ]
             )
         )
-        message_api.reply_message(event.reply_token, message)
+        line_bot_api.reply_message(event.reply_token, message)
     except:
-        message_api.reply_message(
-            event.reply_token, TextSendMessage(text="發生錯誤(datetime)!"))
+        line_bot_api.reply_message( event.reply_token, TextSendMessage(text="發生錯誤(datetime)!"))
 
 
 def sendData_sell(event, backdata):
