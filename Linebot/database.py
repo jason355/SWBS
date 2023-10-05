@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, Text, MetaData, Table, SmallInteger
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, Text, MetaData, update, SmallInteger
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
@@ -19,15 +19,26 @@ def findTeacher(lineId):
 
 
 def insertTeaInfor(lineId, map={}):
-    try:
+    # try:
+    if findTeacher(lineId=lineId) == False:
         session = Session()
         new_data = tea_infor(
             lineID=lineId, teacher=map['teacher'], fromWhere=map['fromWhere'])
         session.add(new_data)
         session.commit()
         session.close()
-    except:
-        print("Someting went wrong when inserting teacher information")
+        session = Session()
+    elif findTeacher(lineId=lineId) != "Error":
+        session = Session()
+        get = findTeacher(lineId)
+        new_data = update(tea_infor).where(tea_infor.id == get.id).values(
+            teacher=map['teacher'], fromWhere=map['fromWhere'])
+        session.execute(new_data)
+        session.commit()
+        session.close()
+
+    # except:
+    #     print("Someting went wrong when inserting teacher information")
 
 
 def insertData(map={}):
@@ -62,12 +73,19 @@ try:
         id = Column(Integer, primary_key=True)
         name = Column(String(15))
         content = Column(Text)
-        is_new = Column(Integer, default=0)
+        is_new = Column(Integer, default=1)
         office = Column(String(5))
         des_grade = Column(String(3))
         des_class = Column(String(1))
 
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
+    # data = {}
+    # data['teacher'] = "林珈生"
+    # data['office'] = "教務處"
+    # data['des_grade'] = "11"
+    # data['des_class'] = "3"
+    # data['content'] = "你好"
+    # insertData(data)
 except SQLAlchemyError as e:
     print(f"Error: code {e} ")
