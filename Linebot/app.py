@@ -1,6 +1,6 @@
 import json
 import re
-import database as db
+import database_lastest as db
 from linebot.models.flex_message import FlexContainer
 from datetime import datetime
 from urllib.parse import parse_qsl
@@ -14,9 +14,14 @@ app = Flask(__name__)
 
 
 # mydb = datafun.initialize_db()
+<<<<<<< HEAD
 line_bot_api = LineBotApi(
     'OQUfgG/04yXRUmv660eCqHp7zedaGzRBKzb1WCJ8gzNp7F7p+Yh8Iaod7/e3wLRk2H6Fh/3zig5l58zlcHaQjPO1qrhS/qt3rEXqszLj9SjcyuJUMJeSlWsW62Zb0983w8O050LDJ0XYsEgh2aI+QQdB04t89/1O/w1cDnyilFU=')
 handler = WebhookHandler('a41d4e206f57d19d2569eb415aaeabc0')
+=======
+line_bot_api = LineBotApi('X8irZcY8i/i8v5vSZshQ/PEUXKzX4twNZc3v+7OgOnDy12/oSrAAtc90bpmlNuRIFAPK0DDWaqYsaSXSdW3/d2q54U82JCX1RGBeFL2+sAfWT0O/uK9MrlOnwtxdnpS7+M3n4QKI58Tix4odkwJFWQdB04t89/1O/w1cDnyilFU=')
+handler = WebhookHandler('d060df7ed691aca2f1cf8a2aa58620ac')
+>>>>>>> 3dab0af1ab21d931bd9fdff0a9d34651695c80a9
 
 
 sendClassString = " "
@@ -63,7 +68,11 @@ def sendButton(event):
                     PostbackTemplateAction(
                         label='發送廣播 [上限300字]',
                         data='action=文字廣播'
+<<<<<<< HEAD
                     ),
+=======
+                    ),                   
+>>>>>>> 3dab0af1ab21d931bd9fdff0a9d34651695c80a9
                     PostbackTemplateAction(
                         label='其他',
                         data='action=其他'
@@ -76,16 +85,24 @@ def sendButton(event):
         line_bot_api.reply_message(
             event.reply_token, TextSendMessage(text='發生錯誤！請洽鍾2鍾'))
 
+<<<<<<< HEAD
 # 教師初次登入
 
 
+=======
+#教師初次登入
+>>>>>>> 3dab0af1ab21d931bd9fdff0a9d34651695c80a9
 @handler.add(FollowEvent)
 def handle_follow(event):
     user_id = event.source.user_id
     reply_message = "老師好, 請輸入您的名稱"
     user_states[user_id] = "設定教師個人資訊階段1"
+<<<<<<< HEAD
     line_bot_api.reply_message(
         event.reply_token, TextSendMessage(text=reply_message))
+=======
+    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_message))
+>>>>>>> 3dab0af1ab21d931bd9fdff0a9d34651695c80a9
 
 
 @handler.add(PostbackEvent)
@@ -112,6 +129,7 @@ def handle_postback(event):
 
     elif backdata.get('action') == 'sell':
         sendData_sell(event, backdata)
+<<<<<<< HEAD
 
     elif backdata.get('action') == "confirm_yes":
         reply_text = "成功發布訊息"
@@ -150,6 +168,18 @@ def handle_postback(event):
             reply_text = "插入失敗，請設置教師個人資訊或洽資訊組"
         send_class_list.clear()
         data.clear()
+=======
+    
+    elif backdata.get('action') == "confirm_yes":
+            reply_text = "成功發布訊息"
+            user = db.findTeacher(user_id)
+            if user != False and user != "Error":
+                data['teacher'] = user.teacher
+                data['office'] = user.fromWhere
+                db.insertData(data)
+            else:
+                reply_message = "插入失敗"
+>>>>>>> 3dab0af1ab21d931bd9fdff0a9d34651695c80a9
 
     elif backdata.get('action') == "confirm_no":
         reply_text = "訊息有誤 請重新輸入訊息\n請輸入您的廣播內容"
@@ -157,6 +187,9 @@ def handle_postback(event):
 
     line_bot_api.reply_message(
         event.reply_token, TextSendMessage(text=reply_text))
+    
+
+
 
 
 # 處理文字訊息
@@ -242,6 +275,7 @@ def handle_message(event):
                     reply_message = "請輸入有效代碼"
                     break
 
+<<<<<<< HEAD
             sendConfirm(event, user_id)
             note = True
             user_states[user_id] = "空閒"
@@ -250,6 +284,14 @@ def handle_message(event):
             if text == "!":
                 sendButton(event)
                 note = True
+=======
+            user_states[user_id] = "廣播訊息階段2-3"
+        
+        elif user_state == "空閒":
+            if text == "!":
+                sendButton(event)
+                note=True
+>>>>>>> 3dab0af1ab21d931bd9fdff0a9d34651695c80a9
 
        # 設定教師個人資訊
         elif user_state == "設定教師個人資訊階段1":
@@ -271,8 +313,7 @@ def handle_message(event):
             note = True
 
     if note == False:
-        line_bot_api.reply_message(
-            event.reply_token, TextSendMessage(text=reply_message))
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_message))
     else:
         note = False
 
@@ -287,7 +328,11 @@ def sendConfirm(event, userid):
             text=f"你確定要發送此則訊息嗎？（請檢察將送出的訊息是否正確）",
             actions=[
                 PostbackTemplateAction(
+<<<<<<< HEAD
                     label='YES 我已確認',
+=======
+                    label='YES 我已確認',                
+>>>>>>> 3dab0af1ab21d931bd9fdff0a9d34651695c80a9
                     data='action=confirm_yes'
                 ),
                 PostbackTemplateAction(
@@ -305,7 +350,11 @@ def sendConfirm(event, userid):
     # except:
     #     print("Error sendConfirm")
 
+<<<<<<< HEAD
     # 當使用者選擇"教師個人資訊"時觸發的處理函數
+=======
+        # 當使用者選擇"教師個人資訊"時觸發的處理函數
+>>>>>>> 3dab0af1ab21d931bd9fdff0a9d34651695c80a9
 # @handler.add(PostbackEvent)
 # def handle_postback(event):
 #     user_id = event.source.user_id
@@ -314,7 +363,11 @@ def sendConfirm(event, userid):
 #     if backdata.get("action") == "教師個人資訊":
 #         # 判斷該用戶是否已經輸入過個人資訊
 #         user_info = findTeacher(user_id)
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 3dab0af1ab21d931bd9fdff0a9d34651695c80a9
 #         if user_info:
 #             # 使用者已輸入過個人資訊，詢問是否要更新
 #             reply_text = "您已經輸入過個人資訊，是否要更新？"
@@ -347,7 +400,11 @@ def sendConfirm(event, userid):
 #     elif backdata.get("action") == "confirm_update":
 #         # 刪除原先輸入的個人資訊
 #         delete_teacher_info(user_id)
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 3dab0af1ab21d931bd9fdff0a9d34651695c80a9
 #         # 重新要求輸入姓名
 #         reply_text = "請重新輸入您的姓名"
 #         user_states[user_id] = "設定教師個人資訊階段1"
@@ -402,8 +459,12 @@ def senddatetime(event):
         )
         line_bot_api.reply_message(event.reply_token, message)
     except:
+<<<<<<< HEAD
         line_bot_api.reply_message(
             event.reply_token, TextSendMessage(text="發生錯誤(datetime)!"))
+=======
+        line_bot_api.reply_message( event.reply_token, TextSendMessage(text="發生錯誤(datetime)!"))
+>>>>>>> 3dab0af1ab21d931bd9fdff0a9d34651695c80a9
 
 
 def sendData_sell(event, backdata):
