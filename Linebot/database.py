@@ -103,13 +103,7 @@ try:
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
 <<<<<<< HEAD
-    # data = {}
-    # data['teacher'] = "林珈生"
-    # data['office'] = "教務處"
-    # data['des_grade'] = "11"
-    # data['des_class'] = "3"
-    # data['content'] = "你好"
-    # insertData(data)
+
 =======
 
 >>>>>>> 3dab0af1ab21d931bd9fdff0a9d34651695c80a9
