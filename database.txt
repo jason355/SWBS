@@ -1,0 +1,8 @@
+create Table tea_infor (
+	id int AUTO_INCREMENT primary key,
+    lineID varchar(40) NOT NULL,
+    teacher varchar(20) not null,
+    fromWhere varchar(20) not null,
+	isAdmin boolean DEFAULT False,
+    verifyStat tinyint default 0
+);
