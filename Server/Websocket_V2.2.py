@@ -76,54 +76,54 @@ async def handle_message(websocket):
 
 async def send_message_to_user(message, dest, group):
 
-    async def send():
+    async def send(ws):
         try:
             # send message
-            await websocket.send(message)
+            await ws.send(message)
         except Error as e:
             print("Error sending message to user : ", e)
 
     # Traverse every data
-    for websocket, cls in connected_clients.items():
+    for ws, cls in connected_clients.items():
         # send to specified class
         if dest and not group :
             # Determine if it's the correct class
             if cls == dest :
-                await send()
+                await send(ws)
                 break
         # send to specified grade
         elif group not in ('0', '4', '5') :
             # junior
             if group in ('7', '8', '9') :
                 if cls[0] == group :
-                    await send()
+                    await send(ws)
             # senior
             else :
                 # 10th grade
                 if group == '1' :
                     if cls[0] == '1' and cls[1] == '0' :
-                        await send()
+                        await send(ws)
                 # 11th grade
                 elif group == '2' :
                     if cls[1] == '1' :
-                        await send()
+                        await send(ws)
                 # 12th grade
                 elif group == '3' :
                     if cls[1] == '2' :
-                        await send()
+                        await send(ws)
         # group send
         else :
             # ALL
             if group == '0' :
-                await send()
+                await send(ws)
             # senior
             elif group == '4' :
                 if cls[0] not in ('7', '8', '9'):
-                    await send()
+                    await send(ws)
             # junior
             elif group == '5' :
                 if cls[0] in ('7', '8', '9') :
-                    await send()
+                    await send(ws)
     return "s"
 
 
