@@ -82,6 +82,8 @@ async def send_message_to_user(message, dest, group):
             await ws.send(message)
         except Error as e:
             print("Error sending message to user : ", e)
+            # if there's error, return "u"
+            return "u"
 
     # Traverse every data
     for ws, cls in connected_clients.items():
@@ -89,42 +91,59 @@ async def send_message_to_user(message, dest, group):
         if dest and not group :
             # Determine if it's the correct class
             if cls == dest :
-                await send(ws)
+                result = await send(ws)
+                if result == "u":
+                    return result
                 break
         # send to specified grade
         elif group not in ('0', '4', '5') :
             # junior
             if group in ('7', '8', '9') :
                 if cls[0] == group :
-                    await send(ws)
+                    result = await send(ws)
+                    if result == "u":
+                        return result
             # senior
             else :
                 # 10th grade
                 if group == '1' :
                     if cls[0] == '1' and cls[1] == '0' :
-                        await send(ws)
+                        result = await send(ws)
+                        if result == "u":
+                            return result
                 # 11th grade
                 elif group == '2' :
                     if cls[1] == '1' :
-                        await send(ws)
+                        result = await send(ws)
+                        if result == "u":
+                            return result
                 # 12th grade
                 elif group == '3' :
                     if cls[1] == '2' :
-                        await send(ws)
+                        result = await send(ws)
+                        if result == "u":
+                            return result
         # group send
         else :
             # ALL
             if group == '0' :
-                await send(ws)
+                result = await send(ws)
+                if result == "u":
+                    return result
             # senior
             elif group == '4' :
                 if cls[0] not in ('7', '8', '9'):
-                    await send(ws)
+                    result = await send(ws)
+                    if result == "u":
+                        return result
             # junior
             elif group == '5' :
                 if cls[0] in ('7', '8', '9') :
-                    await send(ws)
+                    result = await send(ws)
+                    if result == "u":
+                        return result
     return "s"
+
 
 
 async def New_data_added():
@@ -155,6 +174,8 @@ async def New_data_added():
                         data = []
                         data.append(record)
                         response = json.dumps(data, ensure_ascii=False)
+                        # declare check var
+                        sent = None
                         # sent to a specified class
                         if datas.des_class and datas.des_grade:
                             # check if the class availible
@@ -166,6 +187,8 @@ async def New_data_added():
                         elif datas.group_send:
                             # send message
                             sent = await send_message_to_user(response, None, datas.group_send)
+                        while(not sent) :
+                            await asyncio.sleep(1)
                         # check if sending successful
                         if sent == "s" :
                             try:
