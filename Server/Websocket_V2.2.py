@@ -166,9 +166,7 @@ async def New_data_added():
                             "content": datas.content,
                             "is_new": datas.is_new,
                             "time": datas.time.strftime("%Y-%m-%d %H:%M:%S"),
-                            "office": datas.office,
-                            "des_grade": datas.des_grade,
-                            "des_class": datas.des_class
+                            "office": datas.office
                         }
                         # produce for-cli-data
                         data = []
