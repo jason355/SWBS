@@ -185,8 +185,6 @@ async def New_data_added():
                         elif datas.group_send:
                             # send message
                             sent = await send_message_to_user(response, None, datas.group_send)
-                        while(not sent) :
-                            await asyncio.sleep(1)
                         # check if sending successful
                         if sent == "s" :
                             try:
