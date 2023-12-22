@@ -1,7 +1,7 @@
 import re
-import implementV2_5_1 as f
-from implementV2_5_1 import Teacher, Bot
-import databaseV2_5_1 as db
+import implementV2_5_2 as f
+from implementV2_5_2 import Teacher, Bot
+import databaseV2_5_2 as db
 from urllib.parse import parse_qsl
 from linebot.models import  FollowEvent, MessageEvent, TextMessage, TextSendMessage, PostbackTemplateAction, PostbackEvent, TemplateSendMessage, ButtonsTemplate, PostbackAction
 from linebot.exceptions import InvalidSignatureError
