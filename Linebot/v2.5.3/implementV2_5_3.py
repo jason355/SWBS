@@ -79,10 +79,10 @@ class Bot():
     
 
     # 回覆樣板
-    def reply_cancel(self, event, user_id, text, needCancel = True):
+    def reply_cancel(self, event, text, needCancel = True):
         if needCancel == True:
             message = TemplateSendMessage(
-                alt_text='Cancel template',
+                alt_text='Text-Cancel template',
                 template=ButtonsTemplate(
                     title=None,
                     text= text,
@@ -152,7 +152,7 @@ class Bot():
         if self.users[user_id].status == "Bs1":
             reply_message = "您選擇個別發送，請輸入要發送的班級 ex: 703"
             self.users[user_id].status = "Bs2.1"
-            self.reply_cancel(event, user_id, reply_message)
+            self.reply_cancel(event, reply_message)
         
 
 
@@ -171,7 +171,7 @@ class Bot():
                 alt_text='Button Template',
                 template=ButtonsTemplate(
                     # 
-                    text=f"選擇群發年級!\n請輸入傳送班級 (請輸入中文字後的代號)\n 全校 0 \n 高一 1 \n 高二 2 \n 高三 3 \n 高中 4 \n 國中 5 \n 七年級 7 \n 八年級 8 \n 九年級 9\n 特定跳班級 班級三位數並用逗號或空格隔開",
+                    text=f"選擇群發年級!\n請輸入傳送班級(請輸入中文字後的代號)\n 全校 0 \n 高一 1 \n 高二 2 \n 高三 3 \n 高中 4 \n 國中 5 \n 七年級 7 \n 八年級 8 \n 九年級 9\n 特定跳班級 班級三位數並用逗號或空格隔開",
                     actions=[
                         PostbackTemplateAction(
                             label='取消',
@@ -252,7 +252,11 @@ class Bot():
     def confirm_no(self, event, user_id):
         if self.users[user_id].status == "Cs":
             self.users[user_id].status = "Bs1"
-            self.users[user_id].data.clear()
+            self.users[user_id].data['classLs'] = []
+            self.users[user_id].data['classStr'] = " "
+            self.users[user_id].data['des_class'] = ""
+            self.users[user_id].data['des_grade'] = ""
+            self.users[user_id].data['group_send'] = "" 
 
             self.select_target(event)
         # else:
@@ -267,7 +271,7 @@ class Bot():
                 alt_text='Button template',
                 template=ButtonsTemplate(
                     # 把廣播訊息重複在此
-                    text=f"你確定要發送此則訊息嗎？\n（請檢察將送出的訊息是否正確）\n教師名稱: {self.users[user_id].name}\n處室: {self.users[user_id].office}\n傳送班級: {self.users[user_id].data['classStr']}\n廣播內容:{self.users[user_id].data['content']}",
+                    text=f"你確定要發送此則訊息嗎？\n(請檢察將送出的訊息是否正確)\n教師名稱: {self.users[user_id].name}\n處室: {self.users[user_id].office}\n傳送班級: {self.users[user_id].data['classStr']}\n廣播內容:{self.users[user_id].data['content']}",
                     actions=[
                         PostbackTemplateAction(
                             label='YES 我已確認',
@@ -288,7 +292,7 @@ class Bot():
         except Exception as e:
             print(e)
             self.api.push_message(user_id, TextSendMessage(text="確認按鈕傳送錯誤，請再試一次或聯絡管理員 錯誤代碼: E0001")) # 按鈕發生錯誤
-
+            self.users[user_id].status = "Fs"
     
     # 單獨班級廣播
     def handle_Bs2_1(self, event, user_id, text):
@@ -303,18 +307,22 @@ class Bot():
                 self.users[user_id].data['des_grade'] = text[0:2]
                 self.users[user_id].data['des_class'] = text[2]
             self.users[user_id].status = "Bs3"
-            self.reply_cancel(event, user_id, "請輸入廣播文字")
+            self.reply_cancel(event, "請輸入廣播文字")
         else:
             reply_message = "請輸入在範圍內的班級!"
-            self.reply_cancel(event, user_id, reply_message)
+            self.reply_cancel(event, reply_message)
 
     # 群發廣播
     def handle_Bs2_2(self, event, user_id, text):
+        canSend = True
         number_groups = re.findall(pattern, text) # 使用正則表達式解析(僅可判斷以空格或逗號隔開)
         if number_groups != []:
+            
             number_groups = arrangeGetClass(number_groups)
+            print(number_groups)
             for group in number_groups:
                 if len(group) == 1:   # 判斷為年級或班級
+                    print(group)
                     if group == "0":
                         self.users[user_id].data['classStr'] = "全體廣播"
                         self.users[user_id].data['des_class'] = None
@@ -340,9 +348,11 @@ class Bot():
                                     self.users[user_id].data['classStr'] += group + "年級 "
                         else:
                             reply_message = "請輸入正確數字範圍"
-                            self.reply_cancel(event, user_id, reply_message)
+                            self.reply_cancel(event, reply_message)
+                            canSend = False
                             break
                 elif len(group) == 3:
+                    print(group)
                     if group in class_list:
                         if int(group[0:1]) < 4: 
                             if str(int(group[0:2]) - 9) not in number_groups:
@@ -357,24 +367,26 @@ class Bot():
 
                     else:
                         reply_message = "請輸入正確班級"
-                        self.reply_cancel(event, user_id, reply_message)
+                        self.reply_cancel(event, reply_message)
+                        canSend = False
                         break
-            self.users[user_id].status = "Bs3"
-            reply_message = "請輸入廣播訊息"
-            self.reply_cancel(event, user_id, reply_message)
+            if canSend:
+                self.users[user_id].status = "Bs3"
+                reply_message = "請輸入廣播訊息"
+                self.reply_cancel(event, reply_message)
         else:
             reply_message = "請輸入有效代碼"
-            self.reply_cancel(event, user_id, reply_message)
+            self.reply_cancel(event, reply_message)
 
     # 廣播訊息3
     def handle_Bs3(self, event, user_id, text):
 
         if len(text) > 200:
             reply_message = f"輸入字數請勿超過200字, 目前字數{len(text)}"
-            self.reply_cancel(event, user_id, reply_message)
+            self.reply_cancel(event, reply_message)
         elif text.count('\n') > 10:
             reply_message = "訊息請勿超過10行，目前行數" + text.count('\n')
-            self.reply_cancel(event, user_id, reply_message)
+            self.reply_cancel(event, reply_message)
         else:
             self.users[user_id].data['content'] = text
             self.users[user_id].status = "Cs"
@@ -387,11 +399,11 @@ class Bot():
         self.users[user_id].status = "Ss1"
         if isRegis != "Error" and isRegis != False:
             reply_message = "重新設定教師個人資訊\n請輸入您的姓名"
-            self.reply_cancel(event, user_id, reply_message)
+            self.reply_cancel(event, reply_message)
 
         else:
             reply_message = "設定教師個人資訊\n請輸入您的姓名"
-            self.reply_cancel(event, user_id, reply_message, False)
+            self.reply_cancel(event, reply_message, False)
 
 
 
@@ -402,11 +414,11 @@ class Bot():
 
         if status == "Ss1":
             self.users[user_id].status = "Ss2"
-            self.reply_cancel(event, user_id, reply)
+            self.reply_cancel(event, reply)
 
         else:
             self.users[user_id].status = "FSs2"
-            self.reply_cancel(event, user_id, reply, False)
+            self.reply_cancel(event, reply, False)
 
     # 設置個人資訊二
     def handle_Ss2(self, event, user_id, text, status):
@@ -508,15 +520,15 @@ class Bot():
                 self.users[user_id].status = "Ss1" 
                 if isRegis != "Error" and isRegis != False:
                     reply_message = "重新設定教師個人資訊\n請輸入您的姓名"
-                    self.reply_cancel(event, user_id, reply_message)
+                    self.reply_cancel(event, reply_message)
                 else:
                     reply_message = "設定教師個人資訊\n請輸入您的姓名"
-                    self.reply_cancel(event, user_id, reply_message)
+                    self.reply_cancel(event, reply_message)
 
             elif self.users[user_id].status == "FSs2":
                 self.users[user_id].status = "FSs1"  
                 reply_message = "請輸入您的姓名"
-                self.reply_cancel(event, user_id, reply_message, False)
+                self.reply_cancel(event, reply_message, False)
 
     # 管理員許可1
     def handle_Admin1(self, event, user_id,text):
@@ -557,7 +569,7 @@ class Bot():
                 else:
                     reply_message = "設定教師個人資訊\n請輸入您的姓名"
 
-                self.reply_cancel(event, user_id, reply_message)
+                self.reply_cancel(event, reply_message)
         elif text == "2":
             if self.db.findTeacher(user_id):
                 if self.db.verified(user_id):
@@ -619,45 +631,72 @@ class Bot():
                 history_data = self.sort_history_message(history_data)
                 for i in range(1,len(history_data)+1, 1):
                     if history_data[i-1].group_send != None:
-                        reply_message += f"▶️{i})  {history_data[i-1].time} To:{history_data[i-1].group_send} \n\t {history_data[i-1].content} \n"
+                        reply_message += f"▶️{i})  {history_data[i-1].time} To: {history_data[i-1].group_send} \n\t {history_data[i-1].content} \n"
                     else:
-                        reply_message += f"▶️{i})  {history_data[i-1].time} To:{history_data[i-1].des_grade} \n\t {history_data[i-1].content} \n"
+                        reply_message += f"▶️{i})  {history_data[i-1].time} To: {history_data[i-1].des_grade} \n\t {history_data[i-1].content} \n"
                 self.api.reply_message(event.reply_token, TextSendMessage(text=reply_message))
                 self.History_Data_Button(user_id)
 
     # 歷史訊息排序
     def sort_history_message(self, history_data):
         length = len(history_data)
-        for i in range(length):
+        i = 0
+        for m in range(length):
             cList = []
-            if i == length:
+            if i >= len(history_data):
                 break
             if history_data[i].group_send != None:
-                continue    
-            
-            if int(history_data[i].des_grade[1:]) == 7 or int(history_data[i].des_grade[1:]) == 8 or int(history_data[i].des_grade[1:]) == 9:
+                if history_data[i].group_send == '0':
+                    history_data[i].group_send = "全體廣播"
+                    i = i+1
+                    continue
+                elif history_data[i].group_send == '4':
+                    history_data[i].group_send = "高中部"
+                    i = i+1
+                    continue
+                elif history_data[i].group_send == '5':
+                    history_data[i].group_send = "國中部"
+                    i = i+1
+                    continue
+
+                else:
+                    cList.append(history_data[i].group_send)
+                    history_data[i].group_send = f"高{history_data[i].group_send}"
+                    print(cList)
+
+            elif int(history_data[i].des_grade[1:]) == 7 or int(history_data[i].des_grade[1:]) == 8 or int(history_data[i].des_grade[1:]) == 9:
+                cList.append(history_data[i].des_grade + history_data[i].des_class)
                 history_data[i].des_grade = f" {swapClassFromat(history_data[i].des_grade, history_data[i].des_class)}"
-                if history_data[i].des_grade not in cList:
-                    cList.append(history_data[i].des_grade)
+                
+
             else:
                 history_data[i].des_grade += f"{history_data[i].des_class}"
-                if history_data[i].des_grade not in cList:
-                    cList.append(history_data[i].des_grade)
+                cList.append(history_data[i].des_grade)
 
-            for j in range(i+1,length, 1):     
+            j = i+1
+            print(history_data[i].group_send)
+            for k in range(i+1,length, 1):
                 if j >= len(history_data):
                     break
                 if history_data[i].content == history_data[j].content:
-                    if int(history_data[j].des_grade[1:]) == 7 or int(history_data[j].des_grade[1:]) == 8 or int(history_data[j].des_grade[1:]) == 9: 
-                        history_data[i].des_grade += f" {swapClassFromat(history_data[j].des_grade, history_data[j].des_class)}"
-                        if history_data[i].des_grade not in cList:
-                            cList.append(history_data[i].des_grade)
+                    if history_data[j].group_send != None:
+                        history_data[i].group_send += f"高{history_data[j].group_send}"
+                        if history_data[j].group_send not in cList:
+                            cList.append(history_data[j].group_send)
+                       
+                    elif int(history_data[j].des_grade[1:]) == 7 or int(history_data[j].des_grade[1:]) == 8 or int(history_data[j].des_grade[1:]) == 9: 
+                        if history_data[j].des_grade + history_data[j].des_class not in cList:
+                            cList.append(history_data[j].des_grade + history_data[j].des_class)
+                            history_data[i].des_grade += f" {swapClassFromat(history_data[j].des_grade, history_data[j].des_class)}"
+
                     else:
-                        history_data[i].des_grade += f" {history_data[j].des_grade + history_data[j].des_class}"
-                        if history_data[i].des_grade not in cList:
-                            cList.append(history_data[i].des_grade)
+                        if history_data[j].des_grade + history_data[j].des_class not in cList:
+                            cList.append(history_data[j].des_grade + history_data[j].des_class)
+                            history_data[i].des_grade += f" {history_data[j].des_grade + history_data[j].des_class}"
                     del history_data[j]
-                length = len(history_data)
+                else:
+                    j += 1
+            i += 1
         return history_data
 
 # 交換班級格式
