@@ -52,7 +52,7 @@ class Bot():
                     text='請務必先點選"教師個人資訊"按鈕以設定身分',
                     actions=[
                         PostbackTemplateAction(
-                            label='1 教師個人資訊',
+                            label='1 更改教師個人資訊',
                             data='action=@教師個人資訊'
                         ),
                         PostbackTemplateAction(
