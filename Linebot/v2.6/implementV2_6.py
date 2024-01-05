@@ -10,11 +10,10 @@ from flask import request, abort
 
 pattern = r'(\d+)[, ]*'
 AdminConfirmPatter = r'(\d+-\d+|\d+)'
-class_list = ['701', '702', '703', '704', '705', '706', '801', '802', '803', '804', '805', '806', '901', '902', '903', '904', '905',
-              '906', '101', '102', '103', '104', '105', '106', '111', '112', '113', '114', '115', '116', '121', '122', '123', '124', '125', '126']
+class_list = ['701', '702', '703', '704', '705', '801', '802', '803', '804', '805', '901', '902', '903', '904', '905','101', '102', '103', '104', '105', '106', '111', '112', '113', '114', '115', '116', '121', '122', '123', '124', '125', '126']
 grade_list = ['1', '2', '3', '4', '5','7', '8', '9']
 
-dataTemplate = {'content':"", 'classLs': [], 'classStr': "", 'des_class': "", 'des_grade': "", 'group_send': "", 'history_data': [], 'finish_date':""}
+dataTemplate = {'content':"", 'classLs': [], 'classStr': "", 'des_class': "", 'des_grade': "", 'history_data': [], 'finish_date':""}
 
 
 
@@ -191,7 +190,6 @@ class Bot():
                     data["office"] = user.office
                     data["des_class"] = None
                     data["des_grade"] = None
-                    data["group_send"] = None
                     data['content'] = self.users[user_id].data['content']
                     data['finish_date'] = self.users[user_id].data['finish_date']
 
@@ -204,17 +202,36 @@ class Bot():
                         for C in self.users[user_id].data["classLs"]:
                             data["des_class"] = None
                             data["des_grade"] = None
-                            data["group_send"] = None
                             if len(C) == 1:
-                                data['group_send'] = C
-                                self.db.insertData(data)
+
+                                if C == "0":
+                                  for i in range(15):
+                                    data['des_class'] = i + 1
+                                    data['des_grade'] = "0" + C
+                                    self.db.insertData(data)
+                                  for i in range(18):
+                                    data['des_class'] = i + 1
+                                    data['des_grade'] = "1"+ C
+                                    self.db.insertData(data)
+                            
+                                elif C == "7" or C == "8" or C== "9":
+                                   for i in range(5):
+                                       data['des_class'] = i + 1
+                                       data['des_grade'] = "0" + C
+                                       self.db.insertData(data)
+                                
+                                else:
+                                  for i in range(6):
+                                    data['des_class'] = i + 1
+                                    data['des_grade'] = "1"+ C
+                                    self.db.insertData(data)
                                 
                             else:
                                 if int(C[0:1]) == 7 or int(C[0:1]) == 8 or int(C[0:1]) == 9:                    
                                         data['des_grade'] = "0" + C[0:1]
                                         data['des_class'] = C[2]
                                         self.db.insertData(data)
-                                else:                                    
+                                else:
                                         data['des_grade'] = C[0:2]
                                         data['des_class'] = C[2]
                                         self.db.insertData(data)
@@ -241,7 +258,7 @@ class Bot():
         self.users[user_id].data['classStr'] = " "
         self.users[user_id].data['des_class'] = ""
         self.users[user_id].data['des_grade'] = ""
-        self.users[user_id].data['group_send'] = "" 
+
         # self.users[user_id] = ""
             
 
@@ -253,7 +270,7 @@ class Bot():
             self.users[user_id].data['classStr'] = " "
             self.users[user_id].data['des_class'] = ""
             self.users[user_id].data['des_grade'] = ""
-            self.users[user_id].data['group_send'] = "" 
+
 
             self.select_target(event)
         # else:
