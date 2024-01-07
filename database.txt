@@ -19,7 +19,6 @@ CREATE TABLE data (
     finish_date char(10),
     des_grade char(3),
     des_class char(1),
-    group_send char(1)
 );
 
 
