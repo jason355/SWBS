@@ -39,7 +39,6 @@ try:
         office = Column(String(5))
         des_grade = Column(String(2))
         des_class = Column(String(1))
-        group_send = Column(String(1))
         finish_date = Column(String(10))
 
     # create session
@@ -79,7 +78,7 @@ async def handle_message(websocket):
             del connected_clients[websocket]
 
 
-async def send_message_to_user(message, id, dest, group):
+async def send_message_to_user(message, id, dest):
 
     async def send(ws, message):
         try:
@@ -87,9 +86,10 @@ async def send_message_to_user(message, id, dest, group):
             await ws.send(message)
         except Error as e:
             print("Error sending message to user : ", e)
+            return "f"
             # if there's error, return "u"
         break_at = 0
-        while break_at < 5:
+        while break_at < 7200:
             if Cli_message[connected_clients[ws]] == id:
                 return "s"
             await asyncio.sleep(1)
@@ -99,108 +99,20 @@ async def send_message_to_user(message, id, dest, group):
     # Traverse every data
     for ws, cls in connected_clients.items():
         # send to specified class
-        if dest and not group:
+        if dest :
             # Determine if it's the correct class
             if cls == dest:
                 result = await send(ws, message)
-                if result == "u":
-                    # Replace not_send with the break_at loop
+                # sending exception
+                if result == "f":
+                    # resend
                     break_at = 0
-                    while break_at < 4500:
+                    while break_at < 5:
                         print("failed : ", connected_clients[ws])
                         if await send(ws, message) == "s":
-                            break
+                            return "s"
                         await asyncio.sleep(20)
-        # send to specified grade
-        elif group not in ('0', '4', '5'):
-            # junior
-            if group in ('7', '8', '9'):
-                if cls[0] == group:
-                    result = await send(ws, message)
-                    if result == "u":
-                        # Replace not_send with the break_at loop
-                        break_at = 0
-                        while break_at < 4500:
-                            print("failed : ", connected_clients[ws])
-                            if await send(ws, message) == "s":
-                                break
-                            await asyncio.sleep(20)
-            # senior
-            else:
-                # 10th grade
-                if group == '1':
-                    if cls[0] == '1' and cls[1] == '0':
-                        result = await send(ws, message)
-                        if result == "u":
-                            # Replace not_send with the break_at loop
-                            break_at = 0
-                            while break_at < 4500:
-                                print("failed : ", connected_clients[ws])
-                                if await send(ws, message) == "s":
-                                    break
-                                await asyncio.sleep(20)
-                # 11th grade
-                elif group == '2':
-                    if cls[1] == '1':
-                        result = await send(ws, message)
-                        if result == "u":
-                            # Replace not_send with the break_at loop
-                            break_at = 0
-                            while break_at < 4500:
-                                print("failed : ", connected_clients[ws])
-                                if await send(ws, message) == "s":
-                                    break
-                                await asyncio.sleep(20)
-                # 12th grade
-                elif group == '3':
-                    if cls[1] == '2':
-                        result = await send(ws, message)
-                        if result == "u":
-                            # Replace not_send with the break_at loop
-                            break_at = 0
-                            while break_at < 4500:
-                                print("failed : ", connected_clients[ws])
-                                if await send(ws, message) == "s":
-                                    break
-                                await asyncio.sleep(20)
-        # group send
-        else:
-            # ALL
-            if group == '0':
-                result = await send(ws, message)
-                if result == "u":
-                    # Replace not_send with the break_at loop
-                    break_at = 0
-                    while break_at < 4500:
-                        print("failed : ", connected_clients[ws])
-                        if await send(ws, message) == "s":
-                            break
-                        await asyncio.sleep(20)
-            # senior
-            elif group == '4':
-                if cls[0] not in ('7', '8', '9'):
-                    result = await send(ws, message)
-                    if result == "u":
-                        # Replace not_send with the break_at loop
-                        break_at = 0
-                        while break_at < 4500:
-                            print("failed : ", connected_clients[ws])
-                            if await send(ws, message) == "s":
-                                break
-                            await asyncio.sleep(20)
-            # junior
-            elif group == '5':
-                if cls[0] in ('7', '8', '9'):
-                    result = await send(ws, message)
-                    if result == "u":
-                        # Replace not_send with the break_at loop
-                        break_at = 0
-                        while break_at < 4500:
-                            print("failed : ", connected_clients[ws])
-                            if await send(ws, message) == "s":
-                                break
-                            await asyncio.sleep(20)
-    return "s"
+    return result
 
 
 
@@ -254,21 +166,17 @@ async def New_data_added():
                             dest = datas.des_grade + datas.des_class
                             if dest in connected_clients.values():
                                 # send message
-                                sent = await send_message_to_user(response, str(datas.id), dest, None)
-                        # group send
-                        elif datas.group_send:
-                            # send message
-                            sent = await send_message_to_user(response, str(datas.id), None, datas.group_send)
+                                sent = await send_message_to_user(response, str(datas.id), dest)
                         # check if sending successful
-                        if sent == "s" :
-                            try:
-                            # update the data's condition and commit to database
-                                db_session.query(data_access).filter_by(id=datas.id).update({"is_new": 0})
-                                db_session.commit()
-                                print("data sending process success")
-                                send_message_to_line_bot(datas.id)
-                            except Error as e:
-                                print("Error updating data :", e)
+                        if sent == "u" :
+                            print("data sending time exceeded, ID = ", datas.id)
+                        try:
+                        # update the data's condition and commit to database
+                            db_session.query(data_access).filter_by(id=datas.id).update({"is_new": 0})
+                            db_session.commit()
+                            send_message_to_line_bot(datas.id)
+                        except Error as e:
+                            print("Error updating data :", e)
             except Error as e:
                 print("Error fetching datas :", e)
         except Error as e:
