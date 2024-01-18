@@ -446,7 +446,7 @@ class Bot():
         selected_date = date(int(selected_date[0:4]), int(selected_date[5:7]), int(selected_date[8:]))
         nowTime = datetime.now().replace(second=0, microsecond=0).time()
         todayDate = date.today()
-        com = datetime.strptime("00:00", "%H:%M").time()
+        com = datetime.strptime("15:15", "%H:%M").time()
         print((nowTime > com), (selected_date - todayDate))
         if (nowTime > com) and (selected_date - todayDate).days == 0:
             selected_date = selected_date + timedelta(days=1)
