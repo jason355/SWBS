@@ -1,6 +1,6 @@
 # 校園無聲廣播系統 SSBS (School Soundless Broadcasting System)
 
-- [校園無聲廣播系統 SWBS (School Wrieless Broadcasting System)](#校園無聲廣播系統-swbs-school-wrieless-broadcasting-system)
+- [校園無聲廣播系統 SSBS (School Soundless Broadcasting System)](#校園無聲廣播系統-ssbs-school-soundless-broadcasting-system)
   - [Full map](#full-map)
     - [Overall](#overall)
   - [Server](#server)
