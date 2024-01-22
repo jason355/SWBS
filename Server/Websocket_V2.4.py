@@ -86,14 +86,13 @@ async def send_message_to_user(message, id, dest):
             await ws.send(message)
         except Error as e:
             print("Error sending message to user : ", e)
-            return "f"
-            # if there's error, return "u"
         break_at = 0
-        while break_at < 7200:
+        while break_at < 5:
             if Cli_message[connected_clients[ws]] == id:
                 return "s"
             await asyncio.sleep(1)
             break_at+=1
+        # if there's error, return "u"
         return "u"
 
     # Traverse every data
@@ -102,17 +101,7 @@ async def send_message_to_user(message, id, dest):
         if dest :
             # Determine if it's the correct class
             if cls == dest:
-                result = await send(ws, message)
-                # sending exception
-                if result == "f":
-                    # resend
-                    break_at = 0
-                    while break_at < 5:
-                        print("failed : ", connected_clients[ws])
-                        if await send(ws, message) == "s":
-                            return "s"
-                        await asyncio.sleep(20)
-    return result
+                return await send(ws, message)
 
 
 
@@ -148,6 +137,7 @@ async def New_data_added():
                         record = {
                             "id": datas.id,
                             "name": datas.name,
+                            "class": datas.des_grade + datas.des_class,
                             "content": datas.content,
                             "is_new": datas.is_new,
                             "time": datas.time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -167,16 +157,20 @@ async def New_data_added():
                             if dest in connected_clients.values():
                                 # send message
                                 sent = await send_message_to_user(response, str(datas.id), dest)
-                        # check if sending successful
+                        # check if sending unsuccessful
                         if sent == "u" :
                             print("data sending time exceeded, ID = ", datas.id)
-                        try:
-                        # update the data's condition and commit to database
-                            db_session.query(data_access).filter_by(id=datas.id).update({"is_new": 0})
-                            db_session.commit()
-                            send_message_to_line_bot(datas.id)
-                        except Error as e:
-                            print("Error updating data :", e)
+                            try:
+                                send_message_to_line_bot(datas.id)
+                            except Error as e:
+                                print("Error Sending message to linebot :", e)
+                        if sent :
+                            try:
+                            # update the data's condition and commit to database
+                                db_session.query(data_access).filter_by(id=datas.id).update({"is_new": 0})
+                                db_session.commit()
+                            except Error as e:
+                                print("Error updating data :", e)
             except Error as e:
                 print("Error fetching datas :", e)
         except Error as e:
