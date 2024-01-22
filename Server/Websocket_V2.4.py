@@ -153,7 +153,10 @@ async def New_data_added():
                         # sent to a specified class
                         if datas.des_class and datas.des_grade:
                             # check if the class availible
-                            dest = datas.des_grade + datas.des_class
+                            if datas.des_grade[1] == "7" or datas.des_grade[1] == "8" or datas.des_grade[1] == "9":
+                                dest = datas.des_grade[1]+datas.des_grade[0]+datas.des_class
+                            else:
+                                dest = datas.des_grade + datas.des_class
                             if dest in connected_clients.values():
                                 # send message
                                 sent = await send_message_to_user(response, str(datas.id), dest)
