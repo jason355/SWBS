@@ -1,4 +1,5 @@
 
+import sys
 import re
 from urllib.parse import parse_qsl
 from linebot.models import  TextSendMessage, PostbackTemplateAction, TemplateSendMessage, ButtonsTemplate, PostbackAction, DatetimePickerTemplateAction
@@ -192,12 +193,12 @@ class Bot():
                     data["des_grade"] = None
                     data['content'] = self.users[user_id].data['content']
                     data['finish_date'] = self.users[user_id].data['finish_date']
-
                     if len(self.users[user_id].data['classLs']) == 0:
                         data['des_class'] = self.users[user_id].data['des_class']
                         data['des_grade'] = self.users[user_id].data['des_grade'] 
                         ack = self.db.insertData(data)
-
+                        if not ack:
+                            self.api.push_message(user_id, TextSendMessage(text="🙇‍♂️插入資料時發生錯誤，請重新傳送，或是聯絡資訊組"))
                     else:                            
                         for C in self.users[user_id].data["classLs"]:
                             data["des_class"] = None
@@ -209,52 +210,75 @@ class Bot():
                                             for j in range(1,6, 1):
                                                 data['des_class'] = j
                                                 data['des_grade'] = "0" + str(i)
-                                                self.db.insertData(data)
-                                                
+                                                ack = self.db.insertData(data)
+                                                if not ack:
+                                                    self.api.push_message(user_id, TextSendMessage(text="🙇‍♂️插入資料時發生錯誤，請重新傳送，或是聯絡資訊組"))
+                                                    break
                                         for i in range(0, 3):
                                             for j in range(1, 7, 1):
                                                 data['des_class'] = j 
                                                 data['des_grade'] = "1"+ str(i)
-                                                self.db.insertData(data)
-                                                
+                                                ack = self.db.insertData(data)
+                                                if not ack:
+                                                    self.api.push_message(user_id, TextSendMessage(text="🙇‍♂️插入資料時發生錯誤，請重新傳送，或是聯絡資訊組"))
+                                                    break                                               
                                     case "1" | "2" | "3":
                                         for i in range(1, 7, 1):
                                             data['des_class'] = i
                                             data['des_grade'] = "1" + str(int(C) - 1)
-                                            self.db.insertData(data)
+                                            ack = self.db.insertData(data)
+                                            if not ack:
+                                                self.api.push_message(user_id, TextSendMessage(text="🙇‍♂️插入資料時發生錯誤，請重新傳送，或是聯絡資訊組"))
+                                                break     
                                         
                                     case "4":
                                         for i in range(0, 3):
                                             for j in range(1, 7, 1):
                                                 data['des_class'] = j 
                                                 data['des_grade'] = "1"+ str(i)
-                                                self.db.insertData(data)
+                                                ack = self.db.insertData(data)
+                                                if not ack:
+                                                    self.api.push_message(user_id, TextSendMessage(text="🙇‍♂️插入資料時發生錯誤，請重新傳送，或是聯絡資訊組"))
+                                                    break     
                                     case "5":
                                         for i in range(7, 10, 1):
                                             for j in range(1,6, 1):
                                                 data['des_class'] = j
                                                 data['des_grade'] = "0" + str(i)
-                                                self.db.insertData(data)
+                                                ack = self.db.insertData(data)
+                                                if not ack:
+                                                    self.api.push_message(user_id, TextSendMessage(text="🙇‍♂️插入資料時發生錯誤，請重新傳送，或是聯絡資訊組"))
+                                                    break     
                                     
                                     case "7" | "8" | "9":
                                         for i in range(1, 6, 1):
                                             data['des_class'] = i
                                             data['des_grade'] = "0" + C
-                                            self.db.insertData(data)
+                                            ack = self.db.insertData(data)
+                                            if not ack:
+                                                self.api.push_message(user_id, TextSendMessage(text="🙇‍♂️插入資料時發生錯誤，請重新傳送，或是聯絡資訊組"))
+                                                break     
                             else:       
                                 if int(C[0:1]) == 7 or int(C[0:1]) == 8 or int(C[0:1]) == 9:                    
                                         data['des_grade'] = "0" + C[0:1]
                                         data['des_class'] = C[2]
-                                        self.db.insertData(data)
+                                        ack = self.db.insertData(data)
+                                        if not ack:
+                                            self.api.push_message(user_id, TextSendMessage(text="🙇‍♂️插入資料時發生錯誤，請重新傳送，或是聯絡資訊組"))
+                                            break     
                                 else:
                                         data['des_grade'] = C[0:2]
                                         data['des_class'] = C[2]
-                                        self.db.insertData(data)
-                    reply_message = "✅已更新置資料庫，將在下一節下課廣播"
-                    self.api.reply_message(event.reply_token, TextSendMessage(text=reply_message))
+                                        ack = self.db.insertData(data)
+                                        if not ack:
+                                            self.api.push_message(user_id, TextSendMessage(text="🙇‍♂️插入資料時發生錯誤，請重新傳送，或是聯絡資訊組"))
+                                            break     
+                    if ack == True:
+                        reply_message = "✅已更新置資料庫，將在下一節下課廣播"
+                        self.api.reply_message(event.reply_token, TextSendMessage(text=reply_message))
                 elif user == "Error":
                     print(f"E0002: The user {user_id} has more than one data in the database")
-                    reply_message = "您有多於一筆資料在資料庫中，請洽管理員協助"
+                    reply_message = "您有大於一筆個人資料在伺服器中，請洽管理員協助"
                     self.api.reply_message(event.reply_token, TextSendMessage(text=reply_message))
                     # Send message to Admin
                 else:
@@ -293,14 +317,29 @@ class Bot():
         #     self.api.reply_message(
         # event.reply_token, TextSendMessage(text=reply_message))
 
+    def count_chinese_characters(self, input_str):
+        count = 0
+        for char in input_str:
+            if '\u4e00' <= char <= '\u9fff':
+                count += 1
+        return count
+
+
 
     def sendConfirm(self,event, user_id):
         try:
+            Textlen = self.count_chinese_characters(self.users[user_id].data['content']) * 3
+            Textlen += (len(self.users[user_id].data['content']) - self.count_chinese_characters(self.users[user_id].data['content']))
+            if  Textlen > 160:
+                content = self.users[user_id].data['content'][0:20] + "\n"+"...以下省略"
+            else:
+                content = self.users[user_id].data['content']
+
             message = TemplateSendMessage(
                 alt_text='Button template',
                 template=ButtonsTemplate(
                     # 把廣播訊息重複在此
-                    text=f"你確定要發送此則訊息嗎？\n(請檢察將送出的訊息是否正確)\n教師名稱: {self.users[user_id].name}\n處室: {self.users[user_id].office}\n傳送班級: {self.users[user_id].data['classStr']}\n廣播內容:{self.users[user_id].data['content']}\n結束廣播時間:{self.users[user_id].data['finish_date']}",
+                    text=f"你確定要發送此則訊息嗎？\n(請檢察將送出的訊息是否正確)\n教師名稱: {self.users[user_id].name}\n處室: {self.users[user_id].office}\n傳送班級: {self.users[user_id].data['classStr']}\n廣播內容:\n  {content}\n結束廣播時間:{self.users[user_id].data['finish_date']}",
                     actions=[
                         PostbackTemplateAction(
                             label='YES 我已確認',
@@ -430,17 +469,17 @@ class Bot():
     
     # 廣播訊息3
     def handle_Bs3(self, event, user_id, text):
+        textLen = len(text)
 
-        if len(text) > 90:
+        if textLen > 90:
             reply_message = f"輸入字數請勿超過90字, 目前字數{len(text)}"
             self.reply_cancel(event, reply_message)
-        elif text.count('\n') > 6:
-            reply_message = "訊息請勿超過6行，目前行數" + str(text.count('\n')+1)
+        elif text.count('\n') > 4:
+            reply_message = "訊息請勿超過5行，目前行數" + str(text.count('\n')+1)
             self.reply_cancel(event, reply_message)
         else:
             self.users[user_id].data['content'] = text
-            self.users[user_id].data['finish_date'] = date.today() + timedelta(days=1)
-            print(self.users[user_id].data['finish_date'])
+            self.users[user_id].data['finish_date'] = (date.today() + timedelta(days=1)).strftime("%Y-%m-%d")
             self.users[user_id].status = "Cs"
             self.sendConfirm(event, user_id)
 

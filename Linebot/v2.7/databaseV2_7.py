@@ -202,7 +202,7 @@ def DelTeacherData(lineid):
 try:
 
     engine = create_engine(
-        "mysql+mysqlconnector://root:%40%40nccu1st353%40csc@localhost/dbv1", pool_size=50)
+        "mysql+mysqlconnector://root:escko83%404L@localhost/dbv1", pool_size=50)
     Base = declarative_base()
 
     class tea_infor(Base):

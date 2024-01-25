@@ -12,8 +12,8 @@ app = Flask(__name__)
 
 # mydb = datafun.initialize_db()
 
-channel_access_token = os.getenv("SSBS_A")
-channel_secret = os.getenv("SSBS_C")
+channel_access_token = os.getenv("SSBS_test2A")
+channel_secret = os.getenv("SSBS_test2C")
 
 
 line_bot_api = LineBotApi(channel_access_token) # 
