@@ -23,6 +23,18 @@ def getTeacher(lineId):
 
 
 
+def getID(name):
+    session = Session()
+    findID = session.query(tea_infor).filter(
+        tea_infor.name == name).all()
+    if len(findID) == 0:
+        session.close()
+        return False
+    else:
+        session.close()
+        return findID[0]
+
+
 def findTeacher(lineId):
     session = Session()
     find_teacher = session.query(tea_infor).filter(
@@ -190,7 +202,7 @@ def DelTeacherData(lineid):
 try:
 
     engine = create_engine(
-        "mysql+mysqlconnector://root:escko83%404L@localhost/dbv1", pool_size=50)
+        "mysql+mysqlconnector://root:%40%40nccu1st353%40csc@localhost/dbv1", pool_size=50)
     Base = declarative_base()
 
     class tea_infor(Base):

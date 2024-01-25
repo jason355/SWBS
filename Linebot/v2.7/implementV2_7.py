@@ -360,7 +360,7 @@ class Bot():
                         self.users[user_id].data['classStr'] = "全體廣播"
                         self.users[user_id].data['des_class'] = None
                         self.users[user_id].data['des_grade'] = None
-                        self.users[user_id].data['classLs'] = "0"
+                        self.users[user_id].data['classLs'] = ["0"]
                         break
                     elif group == "4":
                         self.users[user_id].data['classStr']  += "高中部 "

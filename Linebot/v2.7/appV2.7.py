@@ -12,8 +12,8 @@ app = Flask(__name__)
 
 # mydb = datafun.initialize_db()
 
-channel_access_token = os.getenv("SSBS_test1A")
-channel_secret = os.getenv("SSBS_test1C")
+channel_access_token = os.getenv("SSBS_A")
+channel_secret = os.getenv("SSBS_C")
 
 
 line_bot_api = LineBotApi(channel_access_token) # 
@@ -48,11 +48,18 @@ def callback():
 @app.route("/test", methods=['POST'])
 def test():
     data = request.json  # 從 POST 請求中取得 JSON 資料
-    message = data.get("id")
+    message = data.get("content")
+    cls = data.get("cls")
+    time = data.get("time")
+    tea = data.get("name")
+    print(cls, time, tea, message)
+    id = db.getID(tea)
+    if id :
+        line_bot_api.push_message(id.lineID, TextSendMessage(text=f"資料傳輸失敗\n原定派送班級 :{cls}\n訊息內容 :{message}\n發送時間 :{time}"))
+        print(f"資料傳輸失敗\n原定派送班級\n:id:{id.lineID}\n{cls}\n訊息內容 :{message}\n發送時間 :{time}")
 
-    print("data process success, id : ", message)
+    print("data process success")
     return  jsonify({"status": "success"})
-
 
 
 # 教師初次登入
