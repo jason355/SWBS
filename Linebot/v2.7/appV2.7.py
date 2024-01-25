@@ -1,5 +1,4 @@
-
-import implementV2_7 as f
+import os
 from implementV2_7 import Teacher, Bot
 import databaseV2_7 as db
 from urllib.parse import parse_qsl
@@ -13,8 +12,12 @@ app = Flask(__name__)
 
 # mydb = datafun.initialize_db()
 
-line_bot_api = LineBotApi('dvaVuCNuhQCmRX2q4CNmLzMTVzgpdJb5c9H5wEX60SB400CAHabVENI7wIOSeHcC92L8xVA5Icr+DT+6wjz/WlCfS7aNNwFdjZTqKpiBJh7eP5eDjLqBfCKraHfYNMO1celm5omVS2+mVO/GYGyjeAdB04t89/1O/w1cDnyilFU=') # 
-handler = WebhookHandler('d50fe61f0be7d5e4509aa3eb077d25c8') # 
+channel_access_token = os.getenv("SSBS_test1A")
+channel_secret = os.getenv("SSBS_test1C")
+
+
+line_bot_api = LineBotApi(channel_access_token) # 
+handler = WebhookHandler(channel_secret) # 
 
 
 users = {}
@@ -161,7 +164,7 @@ def handle_postback(event):
 
 
     elif backdata.get('action') == "@FD":
-        if Manager.users[user_id].status == "Bs4":
+        if Manager.users[user_id].status == "Cs":
             Manager.postback_Bs4(event, user_id)
 
 

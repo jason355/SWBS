@@ -94,8 +94,7 @@ def getHistoryData(lineId):
         session = Session()
         teacher = session.query(tea_infor).filter(
             tea_infor.lineID == lineId).all()
-        data = session.query(Data).filter(
-            Data.name == teacher[0].name, Data.office == teacher[0].office).all()
+        data = session.query(Data).filter(Data.name == teacher[0].name, Data.office == teacher[0].office).all()
         result = []
         for item in data:
             result.append(item)
@@ -214,7 +213,6 @@ try:
         finish_date = Column(String(10))
         des_grade = Column(String(3))
         des_class = Column(String(1))
-        group_send = Column(String(1))
 
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)

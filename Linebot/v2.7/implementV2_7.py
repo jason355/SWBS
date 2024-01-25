@@ -310,6 +310,11 @@ class Bot():
                             label='NO 訊息有誤',
                             data='action=@confirm_no'
                         ),
+                        DatetimePickerTemplateAction(
+                        label='調整廣播結束日期',
+                        data='action=@FD',  
+                        mode='date'
+                        ),
                         PostbackTemplateAction(
                             label='取消',
                             data='action=@cancel'
@@ -326,7 +331,6 @@ class Bot():
     # 單獨班級廣播
     def handle_Bs2_1(self, event, user_id, text):
         if text in class_list:
-            self.users[user_id].data['group_send'] = None
             self.users[user_id].data['classLs'] = []
             self.users[user_id].data['classStr'] = text
             if int(text[0:1]) == 7 or int(text[0:1]) == 8 or int(text[0:1]) == 9:
@@ -356,7 +360,6 @@ class Bot():
                         self.users[user_id].data['classStr'] = "全體廣播"
                         self.users[user_id].data['des_class'] = None
                         self.users[user_id].data['des_grade'] = None
-                        self.users[user_id].data['group_send'] = "0"
                         self.users[user_id].data['classLs'] = "0"
                         break
                     elif group == "4":
@@ -428,29 +431,28 @@ class Bot():
     # 廣播訊息3
     def handle_Bs3(self, event, user_id, text):
 
-        if len(text) > 200:
-            reply_message = f"輸入字數請勿超過200字, 目前字數{len(text)}"
+        if len(text) > 90:
+            reply_message = f"輸入字數請勿超過90字, 目前字數{len(text)}"
             self.reply_cancel(event, reply_message)
-        elif text.count('\n') > 10:
-            reply_message = "訊息請勿超過10行，目前行數" + text.count('\n')
+        elif text.count('\n') > 6:
+            reply_message = "訊息請勿超過6行，目前行數" + str(text.count('\n')+1)
             self.reply_cancel(event, reply_message)
         else:
             self.users[user_id].data['content'] = text
-            self.users[user_id].status = "Bs4"
-            self.date_picker_template(event)
+            self.users[user_id].data['finish_date'] = date.today() + timedelta(days=1)
+            print(self.users[user_id].data['finish_date'])
+            self.users[user_id].status = "Cs"
+            self.sendConfirm(event, user_id)
 
 
     # 廣播訊息4 接收結束廣播時間
     def postback_Bs4(self, event, user_id):
         selected_date = event.postback.params['date']
         selected_date = date(int(selected_date[0:4]), int(selected_date[5:7]), int(selected_date[8:]))
-        nowTime = datetime.now().replace(second=0, microsecond=0).time()
         todayDate = date.today()
-        com = datetime.strptime("15:15", "%H:%M").time()
-        print((nowTime > com), (selected_date - todayDate))
-        if (nowTime > com) and (selected_date - todayDate).days == 0:
+        # print((nowTime > com), (selected_date - todayDate))
+        if (selected_date - todayDate).days == 0:
             selected_date = selected_date + timedelta(days=1)
-            print(selected_date)
             self.users[user_id].data['finish_date'] = selected_date.strftime("%Y-%m-%d")
             self.users[user_id].status = "Cs"
             self.sendConfirm(event, user_id)
@@ -674,10 +676,7 @@ class Bot():
             reply_message = "以下是您最近發送的歷史訊息\n"
             history_data = self.sort_history_message(history_data)
             for i in range(1,len(history_data)+1, 1):
-                if history_data[i-1].group_send != None:
-                    reply_message += f"▶️{i})  {history_data[i-1].time} To: {history_data[i-1].group_send} \n\t {history_data[i-1].content} \n"
-                else:
-                    reply_message += f"▶️{i})  {history_data[i-1].time} To: {history_data[i-1].des_grade} \n\t {history_data[i-1].content} \n"
+                reply_message += f"▶️{i})  {history_data[i-1].time} To: {history_data[i-1].des_grade} \n\t {history_data[i-1].content} \n"
             self.api.reply_message(event.reply_token, TextSendMessage(text=reply_message))
 
     # 歷史訊息排序
@@ -688,24 +687,6 @@ class Bot():
             cList = []
             if i >= len(history_data):
                 break
-            if history_data[i].group_send != None:
-                if history_data[i].group_send == '0':
-                    history_data[i].group_send = "全體廣播"
-                    i = i+1
-                    continue
-                elif history_data[i].group_send == '4':
-                    history_data[i].group_send = "高中部"
-                    i = i+1
-                    continue
-                elif history_data[i].group_send == '5':
-                    history_data[i].group_send = "國中部"
-                    i = i+1
-                    continue
-
-                else:
-                    cList.append(history_data[i].group_send)
-                    history_data[i].group_send = f"高{history_data[i].group_send}"
-                    print(cList)
 
             elif int(history_data[i].des_grade[1:]) == 7 or int(history_data[i].des_grade[1:]) == 8 or int(history_data[i].des_grade[1:]) == 9:
                 cList.append(history_data[i].des_grade + history_data[i].des_class)
@@ -717,17 +698,11 @@ class Bot():
                 cList.append(history_data[i].des_grade)
 
             j = i+1
-            print(history_data[i].group_send)
             for k in range(i+1,length, 1):
                 if j >= len(history_data):
                     break
                 if history_data[i].content == history_data[j].content:
-                    if history_data[j].group_send != None:
-                        history_data[i].group_send += f"高{history_data[j].group_send}"
-                        if history_data[j].group_send not in cList:
-                            cList.append(history_data[j].group_send)
-                       
-                    elif int(history_data[j].des_grade[1:]) == 7 or int(history_data[j].des_grade[1:]) == 8 or int(history_data[j].des_grade[1:]) == 9: 
+                    if int(history_data[j].des_grade[1:]) == 7 or int(history_data[j].des_grade[1:]) == 8 or int(history_data[j].des_grade[1:]) == 9: 
                         if history_data[j].des_grade + history_data[j].des_class not in cList:
                             cList.append(history_data[j].des_grade + history_data[j].des_class)
                             history_data[i].des_grade += f" {swapClassFromat(history_data[j].des_grade, history_data[j].des_class)}"
