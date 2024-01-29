@@ -966,24 +966,25 @@ class Bot():
                 elif text == "幫助":
                     self.postback_Help(event)
                 elif text == "@resetBot":
-                    message = TemplateSendMessage(
-                        alt_text='Button template',
-                        template=ButtonsTemplate(
-                            # 重啟確認
-                            text="⚠️⚠️你確認要重啟程式?正在執行的流程可能會遺失資料?",
-                            actions=[
-                                PostbackTemplateAction(
-                                    label='是',
-                                    data='action=@reset_yes'
-                                ),
-                                PostbackTemplateAction(
-                                    label='否',
-                                    data='action=@reset_no'
-                                ),
-                            ]
+                    if self.db.isAdmin(user_id):
+                        message = TemplateSendMessage(
+                            alt_text='Button template',
+                            template=ButtonsTemplate(
+                                # 重啟確認
+                                text="⚠️⚠️你確認要重啟程式?正在執行的流程可能會遺失資料?",
+                                actions=[
+                                    PostbackTemplateAction(
+                                        label='是',
+                                        data='action=@reset_yes'
+                                    ),
+                                    PostbackTemplateAction(
+                                        label='否',
+                                        data='action=@reset_no'
+                                    ),
+                                ]
+                            )
                         )
-                    )
-                    self.api.reply_message(event.reply_token, message)
+                        self.api.reply_message(event.reply_token, message)
                 else:
                     self.SendButton(event)
     
