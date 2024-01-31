@@ -10,9 +10,9 @@ from sqlalchemy.exc import SQLAlchemyError
 
 
 # Please set up your internet information here
-ip = "192.168.56.1"
-port = 8000
-#Please set up your internet information here
+ip = "140.119.99.17"
+port = 80
+# Please set up your internet information here
 
 # create var to store the client's reply
 Cli_message = {}
@@ -74,22 +74,23 @@ async def handle_message(websocket):
             break
         if msg:
             if websocket not in connected_clients:
+                # avoid same class
+                if msg in connected_clients:
+                    break
                 # record the class
                 connected_clients[websocket] = msg
                 # update the class_name
                 class_name = msg
                 Cli_message[connected_clients[websocket]] = msg
                 print(f"*added new class*  class : {connected_clients[websocket]}")
-            if Cli_message[class_name] != msg :
+            if Cli_message[class_name] != msg:
                 Cli_message[connected_clients[websocket]] = msg
                 print(Cli_message)
     if websocket in connected_clients:
         del connected_clients[websocket]
-    
 
 
 async def send_message_to_user(message, id, dest):
-
     async def send(ws, message):
         try:
             # send message
@@ -98,36 +99,31 @@ async def send_message_to_user(message, id, dest):
             print("Error sending message to user : ", e)
         break_at = 0
         while break_at < 5:
-            if Cli_message[connected_clients[ws]] == id:
-                return "s"
+            if ws in connected_clients:
+                if Cli_message[connected_clients[ws]] == id:
+                    return "s"
             await asyncio.sleep(1)
-            break_at+=1
+            break_at += 1
         # if there's error, return "u"
         return "u"
 
     # Traverse every data
     for ws, cls in connected_clients.items():
-        # send to specified class
-        if dest :
-            # Determine if it's the correct class
-            if cls == dest:
-                return await send(ws, message)
-
-
+        # Determine if it's the correct class
+        if cls == dest:
+            return await send(ws, message)
 
 
 def send_message_to_line_bot(time, name, cls, content):
-    line_bot_server_url = "http://192.168.56.1:8080/test"  # 請替換成實際的 Line Bot Server 的 URL
+    line_bot_server_url = "https://d8b6-140-119-99-80.ngrok-free.app/test"  # 請替換成實際的 Line Bot Server 的 URL
     data = {"time": time, "name": name, "cls": cls, "content": content}
-    
-    response = requests.post(line_bot_server_url, json=data)
-    
-    if response.status_code == 200:
+
+    try:
+        response = requests.post(line_bot_server_url, json=data)
+        response.raise_for_status()  # 如果伺服器回傳非 2xx 狀態碼，則觸發異常
         print("Message sent successfully to Line Bot Server")
-    else:
-        print("Failed to send message to Line Bot Server. Status code:", response.status_code)
-
-
+    except requests.exceptions.RequestException as e:
+        print("Failed to send message to Line Bot Server. Error:", e)
 
 
 async def New_data_added():
@@ -164,22 +160,22 @@ async def New_data_added():
                         if datas.des_class and datas.des_grade:
                             # check if the class availible
                             if datas.des_grade[1] == "7" or datas.des_grade[1] == "8" or datas.des_grade[1] == "9":
-                                dest = datas.des_grade[1]+datas.des_grade[0]+datas.des_class
+                                dest = datas.des_grade[1] + datas.des_grade[0] + datas.des_class
                             else:
                                 dest = datas.des_grade + datas.des_class
                             if dest in connected_clients.values():
                                 # send message
                                 sent = await send_message_to_user(response, str(datas.id), dest)
                         # check if sending unsuccessful
-                        if sent == "u" :
+                        if sent == "u":
                             print("data sending time exceeded, ID = ", datas.id)
                             try:
                                 send_message_to_line_bot(datas.time.strftime("%Y-%m-%d %H:%M:%S"), datas.name, dest, datas.content)
                             except Error as e:
                                 print("Error Sending message to linebot :", e)
-                        if sent :
+                        if sent:
                             try:
-                            # update the data's condition and commit to database
+                                # update the data's condition and commit to database
                                 db_session.query(data_access).filter_by(id=datas.id).update({"is_new": 0})
                                 db_session.commit()
                             except Error as e:
@@ -189,7 +185,7 @@ async def New_data_added():
         except Error as e:
             print("Error creating database session :", e)
         finally:
-            # when the processing of a singel data is ended, close the session to avoid server's overload
+            # when the processing of a single data is ended, close the session to avoid server's overload
             db_session.close()
             # create interval between the duplicated detection
             await asyncio.sleep(1)
