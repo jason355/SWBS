@@ -102,7 +102,7 @@ def shutdown_server():
         print("Error shutting down server:", e)
 
 # 指令縮寫說明
-# Bs (Bordcast stage)廣播訊息階段 (1: 選擇單獨或群發/2.1 個別發送/2.2 群體發送/ 3 取得文字/ 4 取得結束廣播時間)
+# Bs (Bordcast stage)廣播訊息階段 (1: 選擇單獨或群發/2.1 個別發送/2.2 群體發送/ 3 取得文字/ 4 取得結束廣播時間 c修改狀態)
 # Fs (Free stage)空閒
 # Ss (Setting stage)設定教師個人資訊 (F第一次登入/1/2/3 等待管理員確認)
 # Hs (History stage)檢視歷史訊息階段
@@ -156,6 +156,17 @@ def handle_postback(event):
 
     elif backdata.get('action') == "@select_group":
        Manager.postback_Sg(event, user_id)
+    
+    elif backdata.get('action') == "@Cselect_class":
+        if Manager.users[user_id].status == "Bs2.2":
+            Manager.users[user_id].status = "Bs1"
+            Manager.postback_Sc(event, user_id)
+
+
+    elif backdata.get('action') == "@Cselect_group":
+        if Manager.users[user_id].status == "Bs2.1":
+            Manager.users[user_id].status = "Bs1"
+            Manager.postback_Sg(event, user_id)
 
     elif backdata.get('action') == "@cancel":
         Manager.postback_C(event, user_id)
@@ -169,14 +180,49 @@ def handle_postback(event):
 
     elif backdata.get('action') == "@FD":
         if Manager.users[user_id].status == "Cs":
-            Manager.postback_Bs4(event, user_id)
+            Manager.postback_Bs5(event, user_id)
 
+    elif backdata.get('action') == "@EC": # Edit Class
+        if Manager.users[user_id].status == "Cs":
+            Manager.edit_class(event, user_id)
+
+    elif backdata.get('action') == "@ET": # Edit Text
+        if Manager.users[user_id].status == "Cs":
+            reply_message = "重新輸入廣播訊息"
+            Manager.reply_cancel(event, reply_message)
+            Manager.users[user_id].status = "Bs3"
+    elif backdata.get('action') == "@ES": # Edit Sound
+        if Manager.users[user_id].status == "Cs":
+            Manager.users[user_id].status = "Bs4"
+            Manager.sound_select(event, user_id)
+
+    elif backdata.get('action') == "@EA":
+        if Manager.users[user_id].status == "Cs":
+            Manager.edit_all(event, user_id)
+
+    elif backdata.get('action') == "@Eselect_class":
+        if Manager.users[user_id].status == "Bs1":
+            Manager.postback_Sc(event, user_id, True) 
+    
+    elif backdata.get('action') == "@Eselect_group":
+        if Manager.users[user_id].status == "Bs1":
+            Manager.postback_Sg(event, user_id, True) 
+
+    elif backdata.get('action') == "@sound_yes":
+        if Manager.users[user_id].status == "Bs4":
+            Manager.users[user_id].data['sound'] = "1"
+            Manager.users[user_id].status = "Cs"
+            Manager.sendConfirm(event, user_id)
+    elif backdata.get('action') == "@sound_no":
+        if Manager.users[user_id].status == "Bs4":
+            Manager.users[user_id].data['sound'] = "0"
+            Manager.users[user_id].status = "Cs"
+            Manager.sendConfirm(event, user_id)
     elif backdata.get('action') == "@Adm_func":
         if Manager.users[user_id].status == "Fs":
             Manager.cmd_button(event)
     elif backdata.get('action') == "@reset_yes":
         if Manager.users[user_id].status == "Rs":
-
             print("****Server Shuting Down****")
             teachers = db.GetAllTeacherID()
             for teacher in teachers:
@@ -255,19 +301,32 @@ def handle_message(event):
     elif Manager.users[user_id].status == "Ss2":
         Manager.handle_Ss2(event, user_id, text, "Ss2")
 
+    # 廣播訊息 1
+    elif Manager.users[user_id].status == "Bs1":
+        reply_message = "目前處於廣播階段，請先完成廣播或是取消"
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_message))
 
     # 廣播訊息 2.1
     elif Manager.users[user_id].status == "Bs2.1":
         Manager.handle_Bs2_1(event, user_id, text)
-    
+
+    # 廣播訊息 2.1c
+    elif Manager.users[user_id].status == "Bs2.1c":
+        Manager.handle_Bs2_1(event, user_id, text)
+
     # 廣播訊息 2.2
     elif Manager.users[user_id].status == "Bs2.2":
+        Manager.handle_Bs2_2(event, user_id, text)
+    
+    # 廣播訊息 2.2c
+    elif Manager.users[user_id].status == "Bs2.2c":
         Manager.handle_Bs2_2(event, user_id, text)
     
     # 廣播訊息 3
     elif Manager.users[user_id].status == "Bs3":
         Manager.handle_Bs3(event, user_id, text)
-    
+
+
     
     # 空閒
     elif Manager.users[user_id].status == "Fs":

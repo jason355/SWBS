@@ -89,7 +89,7 @@ def insertData(map={}):
     try:
         session = Session()
         new_data = Data(name=map['name'], content=map['content'], office=map['office'],
-                        des_grade=map['des_grade'], des_class= map['des_class'], finish_date = map['finish_date'])
+                        des_grade=map['des_grade'], des_class= map['des_class'], finish_date = map['finish_date'], sound=map['sound'])
         session.add(new_data)
         session.commit()
         session.close()
@@ -260,6 +260,7 @@ try:
         finish_date = Column(String(10))
         des_grade = Column(String(3))
         des_class = Column(String(1))
+        sound = Column(Integer)
 
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
