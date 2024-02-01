@@ -40,6 +40,7 @@ try:
         des_grade = Column(String(2))
         des_class = Column(String(1))
         finish_date = Column(String(10))
+        sound = Column(Integer)
 
     # create session
     session = sessionmaker(bind=engine)
@@ -148,7 +149,8 @@ async def New_data_added():
                             "is_new": datas.is_new,
                             "time": datas.time.strftime("%Y-%m-%d %H:%M:%S"),
                             "office": datas.office,
-                            "finish_date": datas.finish_date
+                            "finish_date": datas.finish_date,
+                            "sound": datas.sound
                         }
                         # produce for-cli-data
                         data = []
