@@ -2,11 +2,11 @@
 import sys
 import re
 from urllib.parse import parse_qsl
-from linebot.models import  TextSendMessage, PostbackTemplateAction, TemplateSendMessage, ButtonsTemplate, PostbackAction, DatetimePickerTemplateAction
+from linebot.models import  TextSendMessage, PostbackTemplateAction, TemplateSendMessage, ButtonsTemplate, PostbackAction, DatetimePickerTemplateAction,MessageAction
 # from linebot.exceptions import InvalidSignatureError
 # from linebot import LineBotApi, WebhookHandler
 from datetime import datetime, date, timedelta, time
-
+import regex
 
 
 pattern = r'(\d+)[, ]*'
@@ -15,7 +15,7 @@ class_list = ['701', '702', '703', '704', '705', '801', '802', '803', '804', '80
 group_index = [-1, 4, 9, 14, 20, 26, 32]
 grade_list = ['1', '2', '3', '4', '5','7', '8', '9']
 
-dataTemplate = {'content':"", 'classLs': [], 'classStr': "", 'des_class': "", 'des_grade': "", 'history_data': [], 'finish_date':""}
+dataTemplate = {'content':"", 'classLs': [], 'classStr': "", 'des_class': "", 'des_grade': "", 'history_data': [], 'finish_date':"", 'sound':''}
 
 
 BreakList = {}
@@ -41,12 +41,12 @@ for i in range(8, 17, 1):
 
 class Teacher():
     
-    def __init__(self, id, name = None, office = None, status = None, isAdm = None, data = dataTemplate, preStatus = None):
+    def __init__(self, id, name = None, office = None, status = None, isAdm = None, data = None, preStatus = None):
         self.id = id
         self.name = name
         self.office = office
         self.isAdm = isAdm
-        self.data = data
+        self.data = data if data is not None else dataTemplate.copy()  # 使用copy()创建新的字典
         self.status = status
         self.preStatus = preStatus
 
@@ -57,7 +57,7 @@ class Bot():
         self.db = database
         self.users = users 
         self.Confirm_List = Confirm_List
-    def SendButton(self, event):
+    def SendButton(self, event, user_id):
         try:
             message = TemplateSendMessage(
                 alt_text='按鈕樣板',
@@ -90,9 +90,78 @@ class Bot():
             self.api.reply_message(event.reply_token, message)
         except Exception as e:
             print(e)
+            self.api.push_message(user_id, TextSendMessage(text="選擇傳送按鈕傳送錯誤，若樣板有傳出請忽略此訊息，若無請再試一次或是聯絡資訊組"))
+
+    # 管理員樣板
+    def SendButton_Adm(self, event):
+        try:
+            message = TemplateSendMessage(
+                alt_text='按鈕樣板',
+                template=ButtonsTemplate(
+                    title='請選擇服務：',
+                    thumbnail_image_url = "https://raw.githubusercontent.com/jason355/SWBS/main/img1.png",
+                    text='請務必先點選"教師個人資訊"按鈕以設定身分',
+                    actions=[
+                        
+                        PostbackTemplateAction(
+                            label='發送廣播',
+                            data='action=@文字廣播'
+
+                        ),
+                        PostbackTemplateAction(
+                            label='更改教師個人資訊',
+                            data='action=@教師個人資訊'
+                        ),
+                        PostbackTemplateAction(
+                            label='歷史訊息',
+                            data='action=@歷史訊息'
+                        ),
+                        PostbackTemplateAction(
+                            label='管理員功能',
+                            data = 'action=@Adm_func'
+                        )
+                    ]
+                )
+            )
+            self.api.reply_message(event.reply_token, message)
+        except Exception as e:
+            print(e)
             self.api.reply_message(
-                event.reply_token, TextSendMessage(text='發生錯誤！請洽資訊組長'))
-    
+                event.reply_token, TextSendMessage(text='⚠️發生錯誤！請在試一次或是使用@resetBot來重啟'))
+
+    #管理員樣板
+    def cmd_button(self, event):
+        try:
+            message = TemplateSendMessage(
+                alt_text='按鈕樣板',
+                template=ButtonsTemplate(
+                    title='請選擇服務：',
+                    thumbnail_image_url = "https://raw.githubusercontent.com/jason355/SWBS/main/img1.png",
+                    text='請務必先點選"教師個人資訊"按鈕以設定身分',
+                    actions=[
+                        
+                        MessageAction(
+                            label='重啟linebot',
+                            text="@resetBot"
+
+                        ),
+                        MessageAction(
+                            label='教師列表',
+                            text='@userList'
+                        ),
+                        MessageAction(
+                            label='刪除資料庫資料',
+                            text='@delData'
+                        ),
+                    ]
+                )
+            )
+            self.api.reply_message(event.reply_token, message)
+        except Exception as e:
+            print(e)
+            self.api.reply_message(
+                event.reply_token, TextSendMessage(text='發生錯誤!請再試一次或是使用@resetBot來重啟'))
+
 
     # 回覆樣板
     def reply_cancel(self, event, text, needCancel = True):
@@ -122,19 +191,21 @@ class Bot():
 設定好個人資訊後，向管理員提出身分認證。
 
 🔴🔴功能選單🔴🔴
-取得管理員認證後，傳送任意訊息即可叫出功能選單
+若您使用電腦版Line，取得管理員認證後，傳送任意文字即可叫出功能選單。
 
 🔴🔴發送廣播🔴🔴
 1. 選擇"發送廣播"。
-2. 系統提示"請輸入廣播訊息"，即輸入欲廣播之訊息。
-3. 確認發送目標，選擇"特定班級"或"群發年級"。
-4. 系統發送檢查通知，按"YES我已確認"或"NO訊息有誤"更正即完成廣播。
-
+2. 選擇發送類型 "個別發送" 或 "群發年級"\n個別發送:限定發送一個班級(跳至2.1) 例如: 113\n群發年級:可組合不同年級與班級或是全校廣播(跳至2.2)
+2.1 若您選擇 "個別發送"，輸入單個目標班級
+2.2 若您選擇 "群體發送"，輸入班級組合(使用空格分開)
+3. 輸入完目標班級後，系統提示"輸入廣播文字"，即可傳送廣播文字
+4. 系統發送檢查通知，系統預設結束廣播時間為隔日(後天有傳出的廣播會被刪除)，若需延長廣播時間，請點"調整廣播結束日期"\n
+5. 若無須修改結束廣播時間，按"YES我已確認"或"NO訊息有誤"更正即完成廣播。
 🔴🔴重設&更正教師資訊🔴🔴
 在選單點選"教師個人資訊"，按步驟更新資料，耐心等候管理員認證。
 
 🔴🔴尋求幫助🔴🔴
-忘記如何使用？歡迎聯絡資訊組或連繫 chahs10428@gs.tp.edu.tw'''
+忘記如何使用？歡迎連繫:#9611 資訊組長'''
         self.api.reply_message(event.reply_token, TextSendMessage(text=reply_message))
 
 
@@ -186,34 +257,20 @@ class Bot():
             self.api.reply_message(event.reply_token, message)
         except Exception as e:
             print(e)
-            self.api.push_message(user_id, TextSendMessage(text="選擇傳送按鈕傳送錯誤，請再試一次或是聯絡資訊組"))
+            self.api.push_message(user_id, TextSendMessage(text="選擇傳送按鈕傳送錯誤，若樣板有傳出請忽略此訊息，若無請再試一次或是聯絡資訊組"))
 
-    # 選擇特定班級按鈕 Select Class
-    def postback_Sc(self, event, user_id):
-        if self.users[user_id].status == "Bs1":
-            reply_message = "您選擇個別發送，請輸入要發送的班級 ex: 703"
-            self.users[user_id].status = "Bs2.1"
-            self.reply_cancel(event, reply_message)
-        
-
-
-    # 選擇群發按鈕 Select group
-    def postback_Sg(self, event, user_id):
-        if self.users[user_id].status == "Bs1":
-            self.users[user_id].status = "Bs2.2"
-            self.select_group_list(event) # 傳送群發按鈕列表
-
-    
-    
-    # 群發文字
-    def select_group_list(self, event):
+    # 特定班級樣板
+    def select_single(self, event,user_id):
         try:
             message = TemplateSendMessage(
                 alt_text='Button Template',
                 template=ButtonsTemplate(
-                    # 
-                    text=f"選擇群發年級!\n請輸入傳送班級(請輸入中文字後的代號)\n 全校 0 \n 高一 1 \n 高二 2 \n 高三 3 \n 高中 4 \n 國中 5 \n 七年級 7 \n 八年級 8 \n 九年級 9\n 特定跳班級 班級三位數並用逗號或空格隔開",
+                    text="您選擇個別發送，請輸入要發送的班級 ex: 703",
                     actions=[
+                        PostbackTemplateAction(
+                            label='更改成 群發年級',
+                            data='action=@Cselect_group' # Change select group
+                        ),
                         PostbackTemplateAction(
                             label='取消',
                             data='action=@cancel'
@@ -224,6 +281,54 @@ class Bot():
             self.api.reply_message(event.reply_token, message)
         except Exception as e:
             print(e)
+            self.api.push_message(user_id, TextSendMessage(text="選擇傳送按鈕傳送錯誤，若樣板有傳出請忽略此訊息，若無請再試一次或是聯絡資訊組"))
+
+
+    # 選擇特定班級按鈕 Select Class
+    def postback_Sc(self, event, user_id, Edit=False):
+        if self.users[user_id].status == "Bs1":
+            if not Edit:
+                self.users[user_id].status = "Bs2.1"
+                self.select_single(event, user_id)
+
+            else:
+                self.users[user_id].status = "Bs2.1c"
+                self.select_single(event, user_id)
+    # 選擇群發按鈕 Select group
+    def postback_Sg(self, event, user_id, Edit = False):
+        if self.users[user_id].status == "Bs1":
+            if not Edit:
+                self.users[user_id].status = "Bs2.2"
+                self.select_group_list(event, user_id) # 傳送群發按鈕列表
+            else:
+                self.users[user_id].status = "Bs2.2c"
+                self.select_group_list(event, user_id)    
+    
+    # 群發文字
+    def select_group_list(self, event, user_id):
+        try:
+            message = TemplateSendMessage(
+                alt_text='Button Template',
+                template=ButtonsTemplate(
+                    # 
+                    text=f"選擇群發年級!\n請輸入傳送班級(請輸入中文字後的代號)\n 全校 0 \n 高一 1 \n 高二 2 \n 高三 3 \n 高中 4 \n 國中 5 \n 七年級 7 \n 八年級 8 \n 九年級 9\n 特定跳班級 班級三位數並用逗號或空格隔開",
+                    actions=[
+                        PostbackTemplateAction(
+                            label='更改成 個別發送',
+                            data='action=@Cselect_class' # Change select class
+                        ),
+                        PostbackTemplateAction(
+                            label='取消',
+                            data='action=@cancel'
+                        )
+                    ]
+                )
+            )
+            self.api.reply_message(event.reply_token, message)
+        except Exception as e:
+            print(e)
+            self.api.push_message(user_id, TextSendMessage(text="選擇傳送按鈕傳送錯誤，若樣板有傳出請忽略此訊息，若無請再試一次或是聯絡資訊組"))
+
 
 
 
@@ -241,10 +346,13 @@ class Bot():
                     data["des_grade"] = None
                     data['content'] = self.users[user_id].data['content']
                     data['finish_date'] = self.users[user_id].data['finish_date']
+                    data['sound'] = self.users[user_id].data['sound']
+
                     if len(self.users[user_id].data['classLs']) == 0:
                         data['des_class'] = self.users[user_id].data['des_class']
                         data['des_grade'] = self.users[user_id].data['des_grade'] 
                         ack = self.db.insertData(data)
+
                         if not ack:
                             self.api.push_message(user_id, TextSendMessage(text="🙇‍♂️插入資料時發生錯誤，請重新傳送，或是聯絡資訊組"))
                     else:                            
@@ -353,6 +461,7 @@ class Bot():
         self.users[user_id].data['classStr'] = " "
         self.users[user_id].data['des_class'] = ""
         self.users[user_id].data['des_grade'] = ""
+        self.users[user_id].data['sound'] = ""
 
         # self.users[user_id] = ""
             
@@ -372,42 +481,120 @@ class Bot():
 
     def confirm_no(self, event, user_id):
         if self.users[user_id].status == "Cs":
-            self.users[user_id].status = "Bs1"
+            message = TemplateSendMessage(
+                alt_text='Button Template',
+                template=ButtonsTemplate(
+                    # 
+                    text="請選擇要修改的內容",
+                    actions=[
+                        PostbackTemplateAction(
+                            label='修改發送班級',
+                            data='action=@EC' # Edit Class
+                        ),
+                        PostbackTemplateAction(
+                            label='修改廣播內容',
+                            data='action=@ET' # Edit Text
+                        ),
+                        PostbackTemplateAction(
+                            label='音效修改',
+                            data='action=@ES' # Edit Sound
+                        ),
+                        PostbackTemplateAction(
+                            label='全部修改',
+                            data='action=@EA' # Edit All
+                        )
+                    ]
+                )
+            )
+            self.api.reply_message(event.reply_token, message)
+
+    def edit_class(self, event, user_id):
+        try:
+            self.users[user_id].status = "Bs1" # Edit Class stat
             self.users[user_id].data['classLs'] = []
             self.users[user_id].data['classStr'] = " "
             self.users[user_id].data['des_class'] = ""
-            self.users[user_id].data['des_grade'] = ""
+            self.users[user_id].data['des_grade'] = ""            
+            message = TemplateSendMessage(
+                alt_text='Button Template',
+                template=ButtonsTemplate(
+                    # 把廣播訊息重複在此
+                    text=f"請問發送對象為......",
+                    actions=[
+                        PostbackTemplateAction(
+                            label='個別發送',
+                            data='action=@Eselect_class'
+                        ),
+                        PostbackTemplateAction(
+                            label='群發年級',
+                            data='action=@Eselect_group'
+                        ),
+                        PostbackTemplateAction(
+                            label='取消',
+                            data='action=@cancel'
+                        )
+                    ]
+                )
+            )
+            self.api.reply_message(event.reply_token, message)
+        except Exception as e:
+            print(e)
+            self.api.push_message(user_id, TextSendMessage(text="選擇傳送按鈕傳送錯誤，若樣板有傳出請忽略此訊息，若無請再試一次或是聯絡資訊組"))
+
+    def edit_all(self, event, user_id):
+        self.users[user_id].data['classLs'] = []
+        self.users[user_id].data['classStr'] = " "
+        self.users[user_id].data['des_class'] = ""
+        self.users[user_id].data['des_grade'] = "" 
+        self.users[user_id].status = "Bs1"
+        self.select_target(event, user_id)
 
 
-            self.select_target(event, user_id)
-        # else:
-        #     reply_message ="請勿重複點選"
-        #     self.api.reply_message(
-        # event.reply_token, TextSendMessage(text=reply_message))
-
-    def count_chinese_characters(self, input_str):
-        count = 0
-        for char in input_str:
-            if '\u4e00' <= char <= '\u9fff':
-                count += 1
-        return count
+    # def count_chinese_characters(self, input_str):
+    #     count = 0
+    #     for char in input_str:
+    #         if '\u4e00' <= char <= '\u9fff':
+    #             count += 1
+    #     return count
 
 
+    # def count_characters(self, text):
+    #     chinese_characters = sum(1 for char in text if '\u4e00' <= char <= '\u9fff')
+    #     english_characters = sum(1 for char in text if char.isascii())
+    #     total_characters = chinese_characters * 3 + english_characters
+    #     return total_characters
+    
+    def calculate_unicode_segmentation(self, text):
+        segments = regex.findall(r'\X', text, regex.U)
+        character_count = len(segments)
+        return character_count
 
     def sendConfirm(self,event, user_id):
         try:
-            Textlen = self.count_chinese_characters(self.users[user_id].data['content']) * 3
-            Textlen += (len(self.users[user_id].data['content']) - self.count_chinese_characters(self.users[user_id].data['content']))
-            if  Textlen > 160:
-                content = self.users[user_id].data['content'][0:20] + "\n"+"...以下省略"
+            if self.users[user_id].data['sound'] == "1":
+                sound = "有"
+            elif self.users[user_id].data['sound'] == "0":
+                sound = "無"
+            reply_message = f"你確定要發送此則訊息嗎？\n教師名稱: {self.users[user_id].name}\n處室: {self.users[user_id].office}\n傳送班級: \n廣播內容:\n \n結束廣播時間: {self.users[user_id].data['finish_date']}\n廣播音效: {sound}"
+            reply_len = self.calculate_unicode_segmentation(reply_message)
+            class_len = self.calculate_unicode_segmentation(self.users[user_id].data['classStr'])
+            content_Max = 160 - reply_len - class_len
+            print(f"reply_len:{reply_len} class_len:{class_len} content_Max:{content_Max}")
+            content_len = self.calculate_unicode_segmentation(self.users[user_id].data['content'])
+            print(f"content_len :{content_len}")
+            if content_len > content_Max:
+                content = self.users[user_id].data['content'][0:content_Max-4] + "...略"
             else:
                 content = self.users[user_id].data['content']
+            print(f"content:{content} len:{self.calculate_unicode_segmentation(content)}")
 
+            reply_message = f"你確定要發送此則訊息嗎？\n教師名稱: {self.users[user_id].name}\n處室: {self.users[user_id].office}\n傳送班級: {self.users[user_id].data['classStr']}\n廣播內容:\n {content}\n結束廣播時間: {self.users[user_id].data['finish_date']}\n廣播音效: {sound}"
+            print(self.calculate_unicode_segmentation(reply_message), self.calculate_unicode_segmentation(self.users[user_id].data['classStr']))
             message = TemplateSendMessage(
                 alt_text='Button template',
                 template=ButtonsTemplate(
                     # 把廣播訊息重複在此
-                    text=f"你確定要發送此則訊息嗎？\n(請檢察將送出的訊息是否正確)\n教師名稱: {self.users[user_id].name}\n處室: {self.users[user_id].office}\n傳送班級: {self.users[user_id].data['classStr']}\n廣播內容:\n  {content}\n結束廣播時間:{self.users[user_id].data['finish_date']}",
+                    text=reply_message,
                     actions=[
                         PostbackTemplateAction(
                             label='YES 我已確認',
@@ -432,9 +619,12 @@ class Bot():
             self.api.reply_message(event.reply_token, message)
         except Exception as e:
             print(e)
-            self.api.push_message(user_id, TextSendMessage(text="確認按鈕傳送錯誤，請再試一次或聯絡管理員 錯誤代碼: E0001")) # 按鈕發生錯誤
+            # self.api.push_message(user_id, TextSendMessage(text="確認按鈕傳送錯誤，請再試一次或聯絡管理員 錯誤代碼: E0001")) # 按鈕發生錯誤
             self.users[user_id].status = "Fs"
-    
+            self.users[user_id].data['classLs'] = []
+            self.users[user_id].data['classStr'] = " "
+            self.users[user_id].data['des_class'] = ""
+            self.users[user_id].data['des_grade'] = ""     
     # 單獨班級廣播
     def handle_Bs2_1(self, event, user_id, text):
         if text in class_list:
@@ -446,8 +636,12 @@ class Bot():
             else:
                 self.users[user_id].data['des_grade'] = text[0:2]
                 self.users[user_id].data['des_class'] = text[2]
-            self.users[user_id].status = "Bs3"
-            self.reply_cancel(event, "請輸入廣播文字")
+            if self.users[user_id].status == "Bs2.1":
+                self.users[user_id].status = "Bs3"
+                self.reply_cancel(event, "請輸入廣播文字")
+            else:
+                self.users[user_id].status = "Cs"
+                self.sendConfirm(event, user_id)
         else:
             reply_message = "請輸入在範圍內的班級!"
             self.reply_cancel(event, reply_message)
@@ -457,7 +651,6 @@ class Bot():
         canSend = True
         number_groups = re.findall(pattern, text) # 使用正則表達式解析(僅可判斷以空格或逗號隔開)
         if number_groups != []:
-            
             number_groups = arrangeGetClass(number_groups)
             print(number_groups)
             for group in number_groups:
@@ -510,12 +703,76 @@ class Bot():
                         canSend = False
                         break
             if canSend:
-                self.users[user_id].status = "Bs3"
-                reply_message = "請輸入廣播訊息"
-                self.reply_cancel(event, reply_message)
+                self.users[user_id].data['classStr'] = self.format_class(self.users[user_id].data['classStr'])
+
+                if self.users[user_id].status == "Bs2.2":
+                    self.users[user_id].status = "Bs3"
+                    self.reply_cancel(event, "請輸入廣播文字")
+                else:
+                    self.users[user_id].status = "Cs"
+                    self.sendConfirm(event, user_id)
         else:
             reply_message = "請輸入有效代碼"
             self.reply_cancel(event, reply_message)
+
+    # 格式化班級
+    def format_class(self, input):
+        numbers = re.findall(r'\d+', input)
+        numbers = list(map(int, numbers))
+        if not numbers:
+            return input
+        numbers.sort()
+        print(numbers)
+        result = []
+        res = ""
+
+        if "高中部" in input:
+            res = "高中部"
+        if  "國中部" in input:
+            res += "國中部"
+
+        start = numbers[0]
+        prev_num = numbers[0]
+
+        for current_num in numbers[1:]:
+            if len(str(current_num)) == 3:
+                if prev_num == current_num - 1:
+                    prev_num = current_num
+                else:
+                    if start == prev_num:
+                        if len(str(start)) == 3:
+                            result.append(str(start))
+                        else:
+                            match (start):
+                                case 1 | 2 | 3:
+                                    result.append(f"高{start}")
+                                    
+                                case 7 | 8 | 9:
+                                    result.append(f"國{start}")
+                    else:
+                        result.append(f"{start}-{prev_num}")
+
+                    start = current_num
+                    prev_num = current_num
+            else:
+                match (current_num):
+                    case 1 | 2 | 3:
+                        result.append(f"高{current_num}")
+                        
+                    case 7 | 8 | 9:
+                        result.append(f"國{current_num}")
+               
+
+        # 處理最後一個數字
+        if start == prev_num:
+            result.append(str(start))
+        else:
+            result.append(f"{start}-{prev_num}")
+        for item in result:
+            res += " "+item
+
+        return res
+
 
     def date_picker_template(self, event):
         date_picker = TemplateSendMessage(
@@ -538,7 +795,6 @@ class Bot():
     # 廣播訊息3
     def handle_Bs3(self, event, user_id, text):
         textLen = len(text)
-
         if textLen > 90:
             reply_message = f"輸入字數請勿超過90字, 目前字數{len(text)}"
             self.reply_cancel(event, reply_message)
@@ -546,14 +802,51 @@ class Bot():
             reply_message = "訊息請勿超過5行，目前行數" + str(text.count('\n')+1)
             self.reply_cancel(event, reply_message)
         else:
+
             self.users[user_id].data['content'] = text
+
             self.users[user_id].data['finish_date'] = (date.today() + timedelta(days=1)).strftime("%Y-%m-%d")
-            self.users[user_id].status = "Cs"
-            self.sendConfirm(event, user_id)
+            
+            if self.users[user_id].status == "Bs3":
+                self.users[user_id].status = "Bs4"
+                self.sound_select(event, user_id)
+            else:
+                self.users[user_id].status = "Cs"
+                self.sendConfirm(event, user_id)
+
+    # 聲音選擇樣板
+    def sound_select(self, event, user_id):
+        try:
+            message = TemplateSendMessage(
+                alt_text='Button template',
+                template=ButtonsTemplate(
+                    text=f"是否需要廣播提醒音效?",
+                    actions=[
+                        PostbackTemplateAction(
+                            label='是',
+                            data='action=@sound_yes'
+                        ),
+                        PostbackTemplateAction(
+                            label='否',
+                            data='action=@sound_no'
+                        ),
+                        PostbackTemplateAction(
+                            label='取消',
+                            data='action=@cancel'
+                        )
+                    ]
+                )
+            )
+            self.api.reply_message(event.reply_token, message)
+        except Exception as e:
+            print(e)
+            self.api.push_message(user_id, TextSendMessage(text="確認按鈕傳送錯誤，請再試一次或聯絡管理員 錯誤代碼: E0001")) # 按鈕發生錯誤
 
 
-    # 廣播訊息4 接收結束廣播時間
-    def postback_Bs4(self, event, user_id):
+  
+
+    # 廣播訊息5 接收結束廣播時間
+    def postback_Bs5(self, event, user_id):
         selected_date = event.postback.params['date']
         selected_date = date(int(selected_date[0:4]), int(selected_date[5:7]), int(selected_date[8:]))
         todayDate = date.today()
@@ -573,12 +866,11 @@ class Bot():
 
     # 設置教師個人資訊
     def postback_Ss(self, event, user_id):
-        isRegis = self.db.findTeacher(user_id)
+        teacher = self.db.getTeacher(user_id)
         self.users[user_id].status = "Ss1"
-        if isRegis != "Error" and isRegis != False:
-            reply_message = "重新設定教師個人資訊\n請輸入您的姓名"
+        if teacher != "Error" and teacher != False:
+            reply_message = f"您好 {teacher.name}\n您所在的處室:{teacher.office}\n重新設定教師個人資訊\n請輸入您的姓名"
             self.reply_cancel(event, reply_message)
-
         else:
             reply_message = "設定教師個人資訊\n請輸入您的姓名"
             self.reply_cancel(event, reply_message, False)
@@ -587,7 +879,7 @@ class Bot():
 
     # 設置個人資訊一
     def handle_Ss1(self, event, user_id, text, status):
-        if len(text) < 40:
+        if len(text) < 10:
             self.users[user_id].name = text
             reply = f"您好 {text} \n請輸入您所在的處室"
             if status == "Ss1":
@@ -965,28 +1257,63 @@ class Bot():
                     self.postback_Hs(event, user_id)
                 elif text == "幫助":
                     self.postback_Help(event)
+                elif not self.db.isAdmin(user_id):
+                    self.SendButton(event, user_id)
                 elif text == "@resetBot":
-                    if self.db.isAdmin(user_id):
-                        message = TemplateSendMessage(
-                            alt_text='Button template',
-                            template=ButtonsTemplate(
-                                # 重啟確認
-                                text="⚠️⚠️你確認要重啟程式?正在執行的流程可能會遺失資料?",
-                                actions=[
-                                    PostbackTemplateAction(
-                                        label='是',
-                                        data='action=@reset_yes'
-                                    ),
-                                    PostbackTemplateAction(
-                                        label='否',
-                                        data='action=@reset_no'
-                                    ),
-                                ]
-                            )
+                    self.users[user_id].status = "Rs" # Reset status
+                    message = TemplateSendMessage(
+                        alt_text='Button template',
+                        template=ButtonsTemplate(
+                            # 重啟確認
+                            text="⚠️⚠️你確認要重啟程式?正在執行的流程可能會遺失資料?",
+                            actions=[
+                                PostbackTemplateAction(
+                                    label='是',
+                                    data='action=@reset_yes'
+                                ),
+                                PostbackTemplateAction(
+                                    label='否',
+                                    data='action=@reset_no'
+                                ),
+                            ]
                         )
-                        self.api.reply_message(event.reply_token, message)
+                    )
+                    self.api.reply_message(event.reply_token, message)
+
+                elif text == "@userList":
+                    AllTeacher = self.db.GetAllTeacherID()
+                    if AllTeacher:
+                        reply_message = f"🔴以下是教師列表 共{len(AllTeacher)}位:"
+                        for user in AllTeacher:
+                            get = self.db.getTeacher(user)
+                            if user != user_id:
+                                reply_message += "\n▶️ "+ get.name+" "+get.office
+                            else:
+                                reply_message += "\n▶️ "+get.name+" (您)"+" "+get.office
+                        self.api.reply_message(event.reply_token, TextSendMessage(text=reply_message))
+                elif text == "@delData":
+                    self.users[user_id].status = "Ds" # Reset status
+
+                    message = TemplateSendMessage(
+                        alt_text='Button template',
+                        template=ButtonsTemplate(
+                            # 重啟確認
+                            text="⚠️⚠️你確認要刪除所有資料庫中資料?",
+                            actions=[
+                                PostbackTemplateAction(
+                                    label='是',
+                                    data='action=@del_yes'
+                                ),
+                                PostbackTemplateAction(
+                                    label='否',
+                                    data='action=@del_no'
+                                ),
+                            ]
+                        )
+                    )
+                    self.api.reply_message(event.reply_token, message)
                 else:
-                    self.SendButton(event)
+                    self.SendButton_Adm(event)    
     
 
     
