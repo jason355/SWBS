@@ -6,7 +6,7 @@ from linebot.models import  TextSendMessage, PostbackTemplateAction, TemplateSen
 # from linebot.exceptions import InvalidSignatureError
 # from linebot import LineBotApi, WebhookHandler
 from datetime import datetime, date, timedelta, time
-
+import regex
 
 
 pattern = r'(\d+)[, ]*'
@@ -41,12 +41,12 @@ for i in range(8, 17, 1):
 
 class Teacher():
     
-    def __init__(self, id, name = None, office = None, status = None, isAdm = None, data = dataTemplate, preStatus = None):
+    def __init__(self, id, name = None, office = None, status = None, isAdm = None, data = None, preStatus = None):
         self.id = id
         self.name = name
         self.office = office
         self.isAdm = isAdm
-        self.data = data
+        self.data = data if data is not None else dataTemplate.copy()  # 使用copy()创建新的字典
         self.status = status
         self.preStatus = preStatus
 
@@ -347,10 +347,12 @@ class Bot():
                     data['content'] = self.users[user_id].data['content']
                     data['finish_date'] = self.users[user_id].data['finish_date']
                     data['sound'] = self.users[user_id].data['sound']
+
                     if len(self.users[user_id].data['classLs']) == 0:
                         data['des_class'] = self.users[user_id].data['des_class']
                         data['des_grade'] = self.users[user_id].data['des_grade'] 
                         ack = self.db.insertData(data)
+
                         if not ack:
                             self.api.push_message(user_id, TextSendMessage(text="🙇‍♂️插入資料時發生錯誤，請重新傳送，或是聯絡資訊組"))
                     else:                            
@@ -548,32 +550,51 @@ class Bot():
         self.select_target(event, user_id)
 
 
-    def count_chinese_characters(self, input_str):
-        count = 0
-        for char in input_str:
-            if '\u4e00' <= char <= '\u9fff':
-                count += 1
-        return count
+    # def count_chinese_characters(self, input_str):
+    #     count = 0
+    #     for char in input_str:
+    #         if '\u4e00' <= char <= '\u9fff':
+    #             count += 1
+    #     return count
 
 
+    # def count_characters(self, text):
+    #     chinese_characters = sum(1 for char in text if '\u4e00' <= char <= '\u9fff')
+    #     english_characters = sum(1 for char in text if char.isascii())
+    #     total_characters = chinese_characters * 3 + english_characters
+    #     return total_characters
+    
+    def calculate_unicode_segmentation(self, text):
+        segments = regex.findall(r'\X', text, regex.U)
+        character_count = len(segments)
+        return character_count
 
     def sendConfirm(self,event, user_id):
         try:
-            Textlen = self.count_chinese_characters(self.users[user_id].data['content']) * 3
-            Textlen += (len(self.users[user_id].data['content']) - self.count_chinese_characters(self.users[user_id].data['content']))
-            if  Textlen > 160:
-                content = self.users[user_id].data['content'][0:20] + "\n"+"...以下省略"
-            else:
-                content = self.users[user_id].data['content']
             if self.users[user_id].data['sound'] == "1":
                 sound = "有"
             elif self.users[user_id].data['sound'] == "0":
                 sound = "無"
+            reply_message = f"你確定要發送此則訊息嗎？\n教師名稱: {self.users[user_id].name}\n處室: {self.users[user_id].office}\n傳送班級: \n廣播內容:\n \n結束廣播時間: {self.users[user_id].data['finish_date']}\n廣播音效: {sound}"
+            reply_len = self.calculate_unicode_segmentation(reply_message)
+            class_len = self.calculate_unicode_segmentation(self.users[user_id].data['classStr'])
+            content_Max = 160 - reply_len - class_len
+            print(f"reply_len:{reply_len} class_len:{class_len} content_Max:{content_Max}")
+            content_len = self.calculate_unicode_segmentation(self.users[user_id].data['content'])
+            print(f"content_len :{content_len}")
+            if content_len > content_Max:
+                content = self.users[user_id].data['content'][0:content_Max-4] + "...略"
+            else:
+                content = self.users[user_id].data['content']
+            print(f"content:{content} len:{self.calculate_unicode_segmentation(content)}")
+
+            reply_message = f"你確定要發送此則訊息嗎？\n教師名稱: {self.users[user_id].name}\n處室: {self.users[user_id].office}\n傳送班級: {self.users[user_id].data['classStr']}\n廣播內容:\n {content}\n結束廣播時間: {self.users[user_id].data['finish_date']}\n廣播音效: {sound}"
+            print(self.calculate_unicode_segmentation(reply_message), self.calculate_unicode_segmentation(self.users[user_id].data['classStr']))
             message = TemplateSendMessage(
                 alt_text='Button template',
                 template=ButtonsTemplate(
                     # 把廣播訊息重複在此
-                    text=f"你確定要發送此則訊息嗎？\n(請檢查將送出的訊息是否正確)\n教師名稱: {self.users[user_id].name}\n處室: {self.users[user_id].office}\n傳送班級: {self.users[user_id].data['classStr']}\n廣播內容:\n  {content}\n結束廣播時間: {self.users[user_id].data['finish_date']}\n廣播音效: {sound}",
+                    text=reply_message,
                     actions=[
                         PostbackTemplateAction(
                             label='YES 我已確認',
@@ -598,9 +619,12 @@ class Bot():
             self.api.reply_message(event.reply_token, message)
         except Exception as e:
             print(e)
-            self.api.push_message(user_id, TextSendMessage(text="確認按鈕傳送錯誤，請再試一次或聯絡管理員 錯誤代碼: E0001")) # 按鈕發生錯誤
+            # self.api.push_message(user_id, TextSendMessage(text="確認按鈕傳送錯誤，請再試一次或聯絡管理員 錯誤代碼: E0001")) # 按鈕發生錯誤
             self.users[user_id].status = "Fs"
-    
+            self.users[user_id].data['classLs'] = []
+            self.users[user_id].data['classStr'] = " "
+            self.users[user_id].data['des_class'] = ""
+            self.users[user_id].data['des_grade'] = ""     
     # 單獨班級廣播
     def handle_Bs2_1(self, event, user_id, text):
         if text in class_list:
@@ -627,7 +651,6 @@ class Bot():
         canSend = True
         number_groups = re.findall(pattern, text) # 使用正則表達式解析(僅可判斷以空格或逗號隔開)
         if number_groups != []:
-            
             number_groups = arrangeGetClass(number_groups)
             print(number_groups)
             for group in number_groups:
@@ -680,6 +703,8 @@ class Bot():
                         canSend = False
                         break
             if canSend:
+                self.users[user_id].data['classStr'] = self.format_class(self.users[user_id].data['classStr'])
+
                 if self.users[user_id].status == "Bs2.2":
                     self.users[user_id].status = "Bs3"
                     self.reply_cancel(event, "請輸入廣播文字")
@@ -689,6 +714,65 @@ class Bot():
         else:
             reply_message = "請輸入有效代碼"
             self.reply_cancel(event, reply_message)
+
+    # 格式化班級
+    def format_class(self, input):
+        numbers = re.findall(r'\d+', input)
+        numbers = list(map(int, numbers))
+        if not numbers:
+            return input
+        numbers.sort()
+        print(numbers)
+        result = []
+        res = ""
+
+        if "高中部" in input:
+            res = "高中部"
+        if  "國中部" in input:
+            res += "國中部"
+
+        start = numbers[0]
+        prev_num = numbers[0]
+
+        for current_num in numbers[1:]:
+            if len(str(current_num)) == 3:
+                if prev_num == current_num - 1:
+                    prev_num = current_num
+                else:
+                    if start == prev_num:
+                        if len(str(start)) == 3:
+                            result.append(str(start))
+                        else:
+                            match (start):
+                                case 1 | 2 | 3:
+                                    result.append(f"高{start}")
+                                    
+                                case 7 | 8 | 9:
+                                    result.append(f"國{start}")
+                    else:
+                        result.append(f"{start}-{prev_num}")
+
+                    start = current_num
+                    prev_num = current_num
+            else:
+                match (current_num):
+                    case 1 | 2 | 3:
+                        result.append(f"高{current_num}")
+                        
+                    case 7 | 8 | 9:
+                        result.append(f"國{current_num}")
+               
+
+        # 處理最後一個數字
+        if start == prev_num:
+            result.append(str(start))
+        else:
+            result.append(f"{start}-{prev_num}")
+        for item in result:
+            res += " "+item
+
+        return res
+
 
     def date_picker_template(self, event):
         date_picker = TemplateSendMessage(
@@ -718,11 +802,17 @@ class Bot():
             reply_message = "訊息請勿超過5行，目前行數" + str(text.count('\n')+1)
             self.reply_cancel(event, reply_message)
         else:
-            self.users[user_id].data['content'] = text
-            self.users[user_id].data['finish_date'] = (date.today() + timedelta(days=1)).strftime("%Y-%m-%d")
-            self.users[user_id].status = "Bs4"
-            self.sound_select(event, user_id)
 
+            self.users[user_id].data['content'] = text
+
+            self.users[user_id].data['finish_date'] = (date.today() + timedelta(days=1)).strftime("%Y-%m-%d")
+            
+            if self.users[user_id].status == "Bs3":
+                self.users[user_id].status = "Bs4"
+                self.sound_select(event, user_id)
+            else:
+                self.users[user_id].status = "Cs"
+                self.sendConfirm(event, user_id)
 
     # 聲音選擇樣板
     def sound_select(self, event, user_id):
@@ -789,7 +879,7 @@ class Bot():
 
     # 設置個人資訊一
     def handle_Ss1(self, event, user_id, text, status):
-        if len(text) < 40:
+        if len(text) < 10:
             self.users[user_id].name = text
             reply = f"您好 {text} \n請輸入您所在的處室"
             if status == "Ss1":

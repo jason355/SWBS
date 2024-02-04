@@ -70,7 +70,7 @@ def handle_follow(event):
     user_id = event.source.user_id
     if db.findAdmin():
         
-        users[user_id] = Teacher(user_id, status = "FSs1")
+        Manager.users[user_id] = Teacher(user_id, status = "FSs1")
         reply_message = "老師好, 請輸入您的名稱"
         line_bot_api.reply_message(
             event.reply_token, TextSendMessage(text=reply_message))
@@ -115,7 +115,8 @@ def handle_postback(event):
     user_id = event.source.user_id
     backdata = dict(parse_qsl(event.postback.data))
 
-
+    # for user, user_instance in Manager.users.items():
+    #     print(f"{user}, name:{user_instance.name} office:{user_instance.office} data{user_instance.data}")
     
     # 首次加入，建立物件
     if user_id not in Manager.users:
@@ -190,7 +191,7 @@ def handle_postback(event):
         if Manager.users[user_id].status == "Cs":
             reply_message = "重新輸入廣播訊息"
             Manager.reply_cancel(event, reply_message)
-            Manager.users[user_id].status = "Bs3"
+            Manager.users[user_id].status = "Bs3c"
     elif backdata.get('action') == "@ES": # Edit Sound
         if Manager.users[user_id].status == "Cs":
             Manager.users[user_id].status = "Bs4"
@@ -211,11 +212,13 @@ def handle_postback(event):
     elif backdata.get('action') == "@sound_yes":
         if Manager.users[user_id].status == "Bs4":
             Manager.users[user_id].data['sound'] = "1"
+            # print(f"user_id: {user_id} teacher:{Manager.users[user_id].name} office:{Manager.users[user_id].office} content: {Manager.users[user_id].data['content']} sound:{Manager.users[user_id].data['sound']}")
             Manager.users[user_id].status = "Cs"
             Manager.sendConfirm(event, user_id)
     elif backdata.get('action') == "@sound_no":
         if Manager.users[user_id].status == "Bs4":
             Manager.users[user_id].data['sound'] = "0"
+            # print(f"user_id: {user_id} teacher:{Manager.users[user_id].name} office:{Manager.users[user_id].office} content: {Manager.users[user_id].data['content']} sound:{Manager.users[user_id].data['sound']}")
             Manager.users[user_id].status = "Cs"
             Manager.sendConfirm(event, user_id)
     elif backdata.get('action') == "@Adm_func":
@@ -283,7 +286,6 @@ def handle_message(event):
             line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_message))
             print(f"**There are more than one {user_id} in the database!!**")
         
-    # print(Manager.users[user_id].status)
 
     # 首次加入個人資訊設定 1
     if Manager.users[user_id].status == "FSs1":
@@ -325,9 +327,14 @@ def handle_message(event):
     # 廣播訊息 3
     elif Manager.users[user_id].status == "Bs3":
         Manager.handle_Bs3(event, user_id, text)
+    # 廣播訊息 3c
+    elif Manager.users[user_id].status == "Bs3c":
+        Manager.handle_Bs3(event, user_id, text)
 
-
-    
+    # 確認廣播提醒
+    elif Manager.users[user_id].status == "Cs":
+        reply_message = "請先確認傳送訊息或是取消此功能"
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_message))
     # 空閒
     elif Manager.users[user_id].status == "Fs":
         Manager.handle_Fs(event, user_id, text)
