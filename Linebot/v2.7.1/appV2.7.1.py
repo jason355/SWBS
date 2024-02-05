@@ -47,6 +47,7 @@ def callback():
         abort(400)
     return 'OK'
 
+# 訊息傳輸失敗回傳
 @app.route("/test", methods=['POST'])
 def test():
     data = request.json  # 從 POST 請求中取得 JSON 資料
@@ -69,7 +70,6 @@ def test():
 def handle_follow(event):
     user_id = event.source.user_id
     if db.findAdmin():
-        
         Manager.users[user_id] = Teacher(user_id, status = "FSs1")
         reply_message = "老師好, 請輸入您的名稱"
         line_bot_api.reply_message(
@@ -92,14 +92,6 @@ def handle_unfollow(event):
 
 
 
-def shutdown_server():
-    print("Shutting down server...")
-    try:
-        func = request.environ.get('werkzeug.server.shutdown')
-        if func is not None:
-            func()
-    except Exception as e:
-        print("Error shutting down server:", e)
 
 # 指令縮寫說明
 # Bs (Bordcast stage)廣播訊息階段 (1: 選擇單獨或群發/2.1 個別發送/2.2 群體發送/ 3 取得文字/ 4 取得結束廣播時間 c修改狀態)
@@ -118,16 +110,22 @@ def handle_postback(event):
     # for user, user_instance in Manager.users.items():
     #     print(f"{user}, name:{user_instance.name} office:{user_instance.office} data{user_instance.data}")
     
-    # 首次加入，建立物件
+    # 程式開啟後第一次加入，建立物件
     if user_id not in Manager.users:
         temp = db.getTeacher(user_id)
-        if temp != "Error" or None:
+        if temp != "Error" or False:
             Manager.users[user_id] = Teacher(user_id, status = "Fs", name=temp.name, office=temp.name)
-        else:
-            Manager.users[user_id] = Teacher(user_id, status="Ss1")
+        elif temp == False:
+            Manager.users[user_id] = Teacher(user_id, status="FSs1")
             reply_message = "老師好, 請輸入您的名稱"
             line_bot_api.reply_message(
         event.reply_token, TextSendMessage(text=reply_message))
+        else:
+            print(f"{user_id} has more than one info in database!\nAuto deleting all.\nPlease sign in again.")
+            Manager.users[user_id] = Teacher(user_id, status="FSs1")
+
+            reply_message = "老師好, 請輸入您的名稱"
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_message))      
    
     # 確認發送訊息
     if backdata.get('action') == "@confirm_yes":  
@@ -212,13 +210,11 @@ def handle_postback(event):
     elif backdata.get('action') == "@sound_yes":
         if Manager.users[user_id].status == "Bs4":
             Manager.users[user_id].data['sound'] = "1"
-            # print(f"user_id: {user_id} teacher:{Manager.users[user_id].name} office:{Manager.users[user_id].office} content: {Manager.users[user_id].data['content']} sound:{Manager.users[user_id].data['sound']}")
             Manager.users[user_id].status = "Cs"
             Manager.sendConfirm(event, user_id)
     elif backdata.get('action') == "@sound_no":
         if Manager.users[user_id].status == "Bs4":
             Manager.users[user_id].data['sound'] = "0"
-            # print(f"user_id: {user_id} teacher:{Manager.users[user_id].name} office:{Manager.users[user_id].office} content: {Manager.users[user_id].data['content']} sound:{Manager.users[user_id].data['sound']}")
             Manager.users[user_id].status = "Cs"
             Manager.sendConfirm(event, user_id)
     elif backdata.get('action') == "@Adm_func":
@@ -264,7 +260,7 @@ def handle_message(event):
     text = event.message.text
     user_id = event.source.user_id
     # 判斷是否有在字典中
-    if user_id not in users:
+    if user_id not in Manager.users:
         Manager.users[user_id] = Teacher(user_id, status = "Fs")
         
         # 將資料庫中資訊放入老師物間中
@@ -276,15 +272,17 @@ def handle_message(event):
             if teacher.isAdmin == 1:
                 Manager.users[user_id].isAdm = 1
         elif teacher == False:
-            Manager.users[user_id].status = "Ss1"
+            Manager.users[user_id].status = "FSs1"
             reply_message =  "老師好, 請輸入您的名稱"
             line_bot_api.reply_message(
         event.reply_token, TextSendMessage(text=reply_message))
-        
         else:
-            reply_message = "資料庫錯誤，錯誤代碼:E0002，請洽管理人員"
-            line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_message))
-            print(f"**There are more than one {user_id} in the database!!**")
+            print(f"{user_id} has more than one info in database!\nAuto deleting all.\nPlease sign in again.")
+            Manager.users[user_id] = Teacher(user_id, status="FSs1")
+
+            reply_message = "老師好, 請輸入您的名稱"
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_message))      
+
         
 
     # 首次加入個人資訊設定 1
