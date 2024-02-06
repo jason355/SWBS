@@ -1,10 +1,5 @@
 import subprocess
 import time
-
-
-
-
-
 child_process = None  # 初始化全局變數
 
 
@@ -15,7 +10,7 @@ def start():
 
 should_start_process = input("是否啟動子進程？(y/n): ").lower() == 'y'
 
-file_name = "appV2.7.1.py"   # input("輸入啟動檔案名稱> ")
+file_name = "appV2.8.py"   # input("輸入啟動檔案名稱> ")
 
 if should_start_process:
 
