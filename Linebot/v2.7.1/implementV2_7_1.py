@@ -619,7 +619,7 @@ class Bot():
             self.api.reply_message(event.reply_token, message)
         except Exception as e:
             print(e)
-            # self.api.push_message(user_id, TextSendMessage(text="確認按鈕傳送錯誤，請再試一次或聯絡管理員 錯誤代碼: E0001")) # 按鈕發生錯誤
+            self.api.push_message(user_id, TextSendMessage(text="確認按鈕傳送錯誤，請再試一次或聯絡管理員 錯誤代碼: E0001")) # 按鈕發生錯誤
             self.users[user_id].status = "Fs"
             self.users[user_id].data['classLs'] = []
             self.users[user_id].data['classStr'] = " "

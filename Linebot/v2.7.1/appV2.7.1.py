@@ -14,8 +14,8 @@ app = Flask(__name__)
 
 # mydb = datafun.initialize_db()
 
-channel_access_token = os.getenv("SSBS_test2A")
-channel_secret = os.getenv("SSBS_test2C")
+channel_access_token = os.getenv("SSBS_A")
+channel_secret = os.getenv("SSBS_C")
 
 
 line_bot_api = LineBotApi(channel_access_token) # 
@@ -113,7 +113,7 @@ def handle_postback(event):
     # 程式開啟後第一次加入，建立物件
     if user_id not in Manager.users:
         temp = db.getTeacher(user_id)
-        if temp != "Error" or False:
+        if temp != "Error" or temp != False:
             Manager.users[user_id] = Teacher(user_id, status = "Fs", name=temp.name, office=temp.name)
         elif temp == False:
             Manager.users[user_id] = Teacher(user_id, status="FSs1")

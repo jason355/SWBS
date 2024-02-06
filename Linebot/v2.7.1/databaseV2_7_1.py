@@ -89,7 +89,7 @@ def insertData(map={}):
     try:
         session = Session()
         new_data = Data(name=map['name'], content=map['content'], office=map['office'],
-                        des_grade=map['des_grade'], des_class= map['des_class'], finish_date = map['finish_date'])
+                        des_grade=map['des_grade'], des_class= map['des_class'], finish_date = map['finish_date'], sound=map['sound'])
         session.add(new_data)
         session.commit()
         session.close()
@@ -114,6 +114,8 @@ def getHistoryData(lineId):
         session.close()
         return result
     except Exception as e:
+        session.close()
+
         print(e)
         return e
 
@@ -173,6 +175,8 @@ def modifyVerifyStat(lineid):
                 return "Uped" # 回傳已被更新
         return True
     except Exception as e:
+        session.close()
+
         print(e)
         return "DE" # 資料庫異常
 
@@ -207,15 +211,33 @@ def DelTeacherData(lineid):
         user_t_del = session.query(tea_infor).filter(tea_infor.lineID == lineid).first()
         session.delete(user_t_del)
         session.commit()
+        session.close()
+
         return True
     except Exception as e:
+        session.close()
+
         print(e)
         return False
+
+# 刪除整個Data資料庫中資料
+    
+def DelDataAll():
+    try:
+        session = Session()
+        rows = session.query(Data).delete()
+        session.commit()
+        session.close()
+        return rows
+        
+    except Exception as e:
+        session.close()
+        return e
 
 try:
 
     engine = create_engine(
-        "mysql+mysqlconnector://root:escko83%404L@localhost/dbv1", pool_size=50)
+        "mysql+mysqlconnector://root:%40%40nccu1st353%40csc@localhost/dbv1", pool_size=50)
     Base = declarative_base()
 
     class tea_infor(Base):
@@ -238,6 +260,7 @@ try:
         finish_date = Column(String(10))
         des_grade = Column(String(3))
         des_class = Column(String(1))
+        sound = Column(Integer)
 
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
