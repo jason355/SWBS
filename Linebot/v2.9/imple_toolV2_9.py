@@ -1,5 +1,5 @@
 import re
-import regex
+import regex, hashlib
 from datetime import datetime, time
 
 class_list = ['701', '702', '703', '704', '705', '801', '802', '803', '804', '805', '901', '902', '903', '904', '905','101', '102', '103', '104', '105', '106', '111', '112', '113', '114', '115', '116', '121', '122', '123', '124', '125', '126']
@@ -48,6 +48,13 @@ def make_break(BreakList):
         j+=1
 
 
+# 產生 SHA-1
+def sha1_hash(string):
+    string_bytes = string.encode('utf-8')
+    sha1 = hashlib.sha1()
+    sha1.update(string_bytes)
+    hashed_string = sha1.hexdigest()
+    return hashed_string
 
 
 
@@ -140,9 +147,8 @@ def sort_history_message(history_data):
         j = i+1 # 第i筆的下一個
         for k in range(i+1,length, 1):
             if j >= len(history_data):
-                
                 break
-            if history_data[i].content == history_data[j].content:
+            if history_data[i].hash == history_data[j].hash:
                 if int(history_data[j].des_grade[1:]) == 7 or int(history_data[j].des_grade[1:]) == 8 or int(history_data[j].des_grade[1:]) == 9: 
                     if history_data[j].des_grade + history_data[j].des_class not in cList:
                         cList.append(history_data[j].des_grade + history_data[j].des_class)

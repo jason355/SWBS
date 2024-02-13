@@ -4,6 +4,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql import func
 import os
+import hashlib
+
 
 # 取得資料庫密碼
 database_pass = os.getenv("dbv1p")
@@ -74,6 +76,9 @@ def insertTeaInfor(lineId, map = {}):
         print(e)
         return False 
 
+
+
+
 # 插入首位管理員
 def insertAdmin(lineId, map={}):
     try:
@@ -99,14 +104,15 @@ def insertData(map):
         with Session() as session:
             if map is None:
                 return False
-            new_data = Data(name=map['name'], lineID=map['lineID'],content=map['content'], office=map['office'],
+
+            new_data = Data(name=map['name'], lineID=map['lineID'], hash=map['hash'],content=map['content'], office=map['office'], time=map['time'],
                             des_grade=map['des_grade'], des_class= map['des_class'], finish_date = map['finish_date'], sound=map['sound'])
             session.add(new_data)
             session.commit()
             return True
     except Exception as e:
         raise e
-    
+        
 
 def getHistoryData(lineId):
     try:
@@ -115,12 +121,9 @@ def getHistoryData(lineId):
             result = []
             for item in data:
                 result.append(item)
-            
             return result
     except Exception as e:
-        
-        print(e)
-        return e
+        raise e
 
 # 尋找管理員
 def findAdmin():
@@ -144,10 +147,7 @@ def isAdmin(lineId):
     try:
         with Session() as session:
             admin = session.query(tea_infor.isAdmin).filter(tea_infor.lineID == lineId).one_or_none()
-            if admin and admin == 1:
-                return True
-            else:
-                return False
+            return admin
     except Exception as e:
         raise e
     
@@ -232,6 +232,8 @@ def DelDataAll():
             return rows
     except Exception as e:
         return False
+    
+
 
 try:
 
@@ -253,6 +255,7 @@ try:
         id = Column(Integer, primary_key=True)
         name = Column(String(40))
         lineID = Column(String(45))
+        hash = Column(String(40))
         content = Column(Text)
         is_new = Column(Integer, default=1)
         office = Column(String(5))

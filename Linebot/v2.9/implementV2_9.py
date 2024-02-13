@@ -3,7 +3,7 @@ from linebot.models import  TextSendMessage, PostbackTemplateAction, TemplateSen
 from datetime import date, timedelta
 import imple_toolV2_9 as t
 import copy
-import requests
+from datetime import datetime
 import sys
 
 pattern = r'(\d+)[, ]*'
@@ -14,8 +14,12 @@ grade_list = ['1', '2', '3', '4', '5','7', '8', '9']
 dataTemplate = {'content':"", 'classLs': [], 'classStr': "", 'des_class': "", 'des_grade': "", 'finish_date':"", 'sound':""}
 BreakList = {}
 errorText = "*An Error in implementV2_9"
+# webhook_url = input("please enter url> ")
+error_messages  = []
+global errorIndex
+errorIndex = 1
 
-t.make_break(BreakList)
+t.make_break(BreakList) # 建立下課列表
 
 class Teacher():
     
@@ -37,15 +41,14 @@ class Bot():
         self.Confirm_List = Confirm_List
 
     # 傳送錯誤至錯誤網頁
-    def sendError(self, e):
-        error_url = "http://127.0.0.1:5000/error"  # 請替換成實際的 Line Bot Server 的 URL
-        data = {"error_message": e}
-        response = requests.post(error_url, json=data)
-        if response.status_code == 200:
-            print("Message sent successfully to Error Server")
-        else:
-            print("Failed to send message to Error Server. Status code:", response.status_code)
-
+    def addError(self, e):
+        global errorIndex
+        error_message = {'id':errorIndex, "time": datetime.now().strftime("%d/%m/%Y %H:%M:%S"), "error": e}
+        error_messages.append(error_message)
+        errorIndex += 1
+    
+    def getErrorList(self):
+        return error_messages 
 
     # 傳送功能選單
     def SendButton(self, event, user_id):
@@ -78,18 +81,19 @@ class Bot():
             )
             self.api.reply_message(event.reply_token, message)
         except Exception as e:
-            print(e)
+            print(f"{errorText}-SendButtn()\n{e}")
+            self.addError(e)
             self.api.push_message(user_id, TextSendMessage(text="選擇傳送按鈕傳送錯誤，若樣板有傳出請忽略此訊息，若無請再試一次或是聯絡資訊組"))
 
     # 管理員樣板
-    def SendButton_Adm(self, event):
+    def SendButton_Adm(self, event, user_id):
         try:
             message = TemplateSendMessage(
                 alt_text='按鈕樣板',
                 template=ButtonsTemplate(
-                    title='請選擇服務：',
+                    title=f'請選擇服務：',
                     thumbnail_image_url = "https://raw.githubusercontent.com/jason355/SWBS/main/img1.png",
-                    text='請務必先點選"教師個人資訊"按鈕以設定身分',
+                    text="點選下方按鈕來啟用服務",
                     actions=[
                         PostbackTemplateAction(
                             label='發送廣播',
@@ -113,8 +117,9 @@ class Bot():
             self.api.reply_message(event.reply_token, message)
         except Exception as e:
             print(e)
-            self.api.reply_message(
-                event.reply_token, TextSendMessage(text='⚠️發生錯誤！請在試一次或是使用@resetBot來重啟'))
+            self.addError(e)
+            self.api.push_message(
+                user_id, TextSendMessage(text='⚠️發生錯誤！請在試一次或是使用@resetBot來重啟'))
 
     #管理員樣板
     def cmd_button(self, event):
@@ -198,9 +203,9 @@ class Bot():
                     self.api.reply_message(event.reply_token,TextSendMessage(text=reply_message))
             except Exception as e:
                 print(f"{errorText}-postback_Bs\n{e}")
-                self.sendError(e)
+                self.addError(e)
                 reply_message = "資料庫異常，請再試一次或是聯絡 #9611資訊組"
-                self.push_message(user_id, TextSendMessage(text=reply_message))
+                self.api.push_message(user_id, TextSendMessage(text=reply_message))
 
 
 
@@ -313,11 +318,15 @@ class Bot():
                         data["name"] = user.name
                         data['lineID'] = user_id
                         data["office"] = user.office
+                        data['time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         data["des_class"] = None
                         data["des_grade"] = None
                         data['content'] = self.users[user_id].data['content']
                         data['finish_date'] = self.users[user_id].data['finish_date']
                         data['sound'] = self.users[user_id].data['sound']
+
+                        hash_text = data['name'] + data['lineID'] + data['office'] + data['time'] + data['content']
+                        data['hash'] = t.sha1_hash(hash_text)
 
                         if len(self.users[user_id].data['classLs']) == 0:
                             data['des_class'] = self.users[user_id].data['des_class']
@@ -325,12 +334,14 @@ class Bot():
                             try:
                                 ack = self.db.insertData(data)
                             except Exception as e:
-                                print(f"*An Error {e}")
-                                self.sendError(e)
-                                self.api.reply_message(event.reply_token, TextSendMessage(text="🙇‍♂️插入資料時發生錯誤，請重新傳送，或是聯絡資訊組"))
+                                error = f"{error_messages}-confirm_yes\n{e}"
+                                print(error)
+                                self.addError(error)    
+                                ack = False
+                                self.api.push_message(user_id, TextSendMessage(text="🙇‍♂️插入資料時發生錯誤，請重新傳送，或是聯絡資訊組"))
                         else:                            
                             for C in self.users[user_id].data["classLs"]:
-                                print("C: ", C)
+                                # print("C: ", C)
                                 data["des_class"] = None
                                 data["des_grade"] = None
                                 if len(C) == 1:
@@ -343,9 +354,11 @@ class Bot():
                                                     try:
                                                         ack = self.db.insertData(data)
                                                     except Exception as e:
-                                                        print(f"*An Error {e}")
-                                                        self.sendError(e)
-                                                        self.api.reply_message(event.reply_token, TextSendMessage(text="🙇‍♂️插入資料時發生錯誤，請重新傳送，或是聯絡資訊組"))
+                                                        error = f"{error_messages}-confirm_yes\n{e}"
+                                                        print(error)
+                                                        self.addError(error)
+                                                        self.api.push_message(user_id, TextSendMessage(text="🙇‍♂️插入資料時發生錯誤，請重新傳送，或是聯絡資訊組"))
+                                                        ack = False
                                                         break
                                             for i in range(0, 3):
                                                 for j in range(1, 7, 1):
@@ -354,9 +367,12 @@ class Bot():
                                                     try:
                                                         ack = self.db.insertData(data)
                                                     except Exception as e:
-                                                        print(f"*An Error {e}")
-                                                        self.sendError(e)
-                                                        self.api.reply_message(event.reply_token, TextSendMessage(text="🙇‍♂️插入資料時發生錯誤，請重新傳送，或是聯絡資訊組"))
+                                                        error = f"{error_messages}-confirm_yes\n{e}"
+                                                        print(error)
+                                                        self.addError(error)
+                                                        self.api.push_message(user_id, TextSendMessage(text="🙇‍♂️插入資料時發生錯誤，請重新傳送，或是聯絡資訊組"))
+
+                                                        ack = False
                                                         break                                              
                                         case "1" | "2" | "3":
                                             for i in range(1, 7, 1):
@@ -365,9 +381,11 @@ class Bot():
                                                 try:
                                                     ack = self.db.insertData(data)
                                                 except Exception as e:
-                                                    print(f"*An Error {e}")
-                                                    self.sendError(e)
-                                                    self.api.reply_message(event.reply_token, TextSendMessage(text="🙇‍♂️插入資料時發生錯誤，請重新傳送，或是聯絡資訊組"))
+                                                    error = f"{error_messages}-confirm_yes\n{e}"
+                                                    print(error)
+                                                    self.addError(error)
+                                                    self.api.push_message(user_id, TextSendMessage(text="🙇‍♂️插入資料時發生錯誤，請重新傳送，或是聯絡資訊組"))
+                                                    ack = False
                                                     break     
                                             
                                         case "4":
@@ -378,9 +396,11 @@ class Bot():
                                                     try:
                                                         ack = self.db.insertData(data)
                                                     except Exception as e:
-                                                        print(f"*An Error {e}")
-                                                        self.sendError(e)
-                                                        self.api.reply_message(event.reply_token, TextSendMessage(text="🙇‍♂️插入資料時發生錯誤，請重新傳送，或是聯絡資訊組"))
+                                                        error = f"{error_messages}-confirm_yes\n{e}"
+                                                        print(error)
+                                                        self.addError(error)
+                                                        self.api.push_message(user_id, TextSendMessage(text="🙇‍♂️插入資料時發生錯誤，請重新傳送，或是聯絡資訊組"))
+                                                        ack = False
                                                         break     
                                         case "5":
                                             for i in range(7, 10, 1):
@@ -390,9 +410,11 @@ class Bot():
                                                     try:
                                                         ack = self.db.insertData(data)
                                                     except Exception as e:
-                                                        print(f"*An Error {e}")
-                                                        self.sendError(e)
-                                                        self.api.reply_message(event.reply_token, TextSendMessage(text="🙇‍♂️插入資料時發生錯誤，請重新傳送，或是聯絡資訊組"))
+                                                        error = f"{error_messages}-confirm_yes\n{e}"
+                                                        print(error)
+                                                        self.addError(error)
+                                                        self.api.push_message(user_id, TextSendMessage(text="🙇‍♂️插入資料時發生錯誤，請重新傳送，或是聯絡資訊組"))
+                                                        ack = False
                                                         break     
                                         
                                         case "7" | "8" | "9":
@@ -402,9 +424,11 @@ class Bot():
                                                 try:
                                                     ack = self.db.insertData(data)
                                                 except Exception as e:
-                                                    print(f"*An Error {e}")
-                                                    self.sendError(e)
-                                                    self.api.reply_message(event.reply_token, TextSendMessage(text="🙇‍♂️插入資料時發生錯誤，請重新傳送，或是聯絡資訊組"))
+                                                    error = f"{error_messages}-confirm_yes\n{e}"
+                                                    print(error)
+                                                    self.addError(error)
+                                                    self.api.push_message(user_id, TextSendMessage(text="🙇‍♂️插入資料時發生錯誤，請重新傳送，或是聯絡資訊組"))
+                                                    ack = False 
                                                     break     
                                 else:       
                                     if int(C[0:1]) == 7 or int(C[0:1]) == 8 or int(C[0:1]) == 9:                    
@@ -413,9 +437,11 @@ class Bot():
                                             try:
                                                 ack = self.db.insertData(data)
                                             except Exception as e:
-                                                print(f"*An Error {e}")
-                                                self.sendError(e)
-                                                self.api.reply_message(event.reply_token, TextSendMessage(text="🙇‍♂️插入資料時發生錯誤，請重新傳送，或是聯絡資訊組"))
+                                                error = f"{error_messages}-confirm_yes\n{e}"
+                                                print(error)
+                                                self.addError(error)
+                                                self.api.push_message(user_id, TextSendMessage(text="🙇‍♂️插入資料時發生錯誤，請重新傳送，或是聯絡資訊組"))
+                                                ack = False
                                                 break     
                                     else:
                                             data['des_grade'] = C[0:2]
@@ -423,9 +449,11 @@ class Bot():
                                             try:
                                                 ack = self.db.insertData(data)
                                             except Exception as e:
-                                                print(f"*An Error {e}")
-                                                self.sendError(e)
-                                                self.api.reply_message(event.reply_token, TextSendMessage(text="🙇‍♂️插入資料時發生錯誤，請重新傳送，或是聯絡資訊組"))
+                                                error = f"{error_messages}-confirm_yes\n{e}"
+                                                print(error)
+                                                self.addError(error)
+                                                self.api.push_message(user_id, TextSendMessage(text="🙇‍♂️插入資料時發生錯誤，請重新傳送，或是聯絡資訊組"))
+                                                ack = False
                                                 break     
                         if ack == True:
                             T = t.isBreak(BreakList)
@@ -438,15 +466,18 @@ class Bot():
                             elif T == 3:
                                 reply_message = "✅已更新置資料庫，將在下一節下課廣播"
                                 self.api.reply_message(event.reply_token, TextSendMessage(text=reply_message))
+                            self.users[user_id].data = copy.deepcopy(dataTemplate)
                     else:
                         reply_message = f"⚠️資料庫中未找到您的資料，請您嘗試封鎖此 Line Bot再解封鎖，以重新註冊，或是聯絡 #9611資訊組 謝謝"
                     
 
                 except Exception as e:
-                    print(f"*An Error: {e}")
-                    self.sendError(e)
+                    error = f"{error_messages}-confirm_yes\n{e}"
+                    print(error)
+                    self.addError(error)
+                    self.users[user_id].data = copy.deepcopy(dataTemplate)
                     reply_message = "尋找資訊錯誤，請再試一次或洽 #9611資訊組"
-                    self.api.reply_message(event.reply_token, TextSendMessage(text=reply_message)) 
+                    self.api.push_message(user_id, TextSendMessage(text=reply_message)) 
 
         self.users[user_id].status = "Fs"
             
@@ -609,6 +640,7 @@ class Bot():
     def handle_Bs2_2(self, event, user_id, text):
         canSend = True
         number_groups = re.findall(pattern, text) # 使用正則表達式解析(僅可判斷以空格或逗號隔開)
+        print(f"number_groups {number_groups}")
         if number_groups != []:
             number_groups = t.arrangeGetClass(number_groups)
             for group in number_groups:
@@ -660,9 +692,11 @@ class Bot():
                         self.reply_cancel(event, reply_message)
                         canSend = False
                         break
+                print(f"str {self.users[user_id].data['classStr']}")
             if canSend:
+                print(f"Bs2.2:{self.users[user_id].data['classStr']}")
                 self.users[user_id].data['classStr'] = t.format_class(self.users[user_id].data['classStr'])
-
+                print(f"Bs2.2-formated {self.users[user_id].data['classStr']}")
                 if self.users[user_id].status == "Bs2.2":
                     self.users[user_id].status = "Bs3"
                     self.reply_cancel(event, "請輸入廣播文字")
@@ -762,7 +796,7 @@ class Bot():
                 self.reply_cancel(event, reply_message, False)
         except Exception as e:
             print(f"* An Error {e}")
-            self.sendError(e)
+            self.addError(e)
             reply_message = "尋找教師資訊失敗，請嘗試封鎖此 Line bot 再解封鎖以重新登入或是詢問資訊組 # 9611"
             self.api.reply_message(event.reply_token, TextSendMessage(text=reply_message)) 
 
@@ -889,7 +923,7 @@ class Bot():
                                         reply_message += f"\n▶️{i+1}) 教師: {temp.name} 處室: {temp.office}"
                                 except Exception as e:
                                     print(f"*An Error {e}")
-                                    self.sendError(e)
+                                    self.addError(e)
                         try:
                             AdminList = self.db.findAdmin()
                             if AdminList:
@@ -912,16 +946,16 @@ class Bot():
                                     self.db.insertAdmin(user_id, {'name':name, 'office':office, 'verifyStat':1, 'isAdmin':1})
                                 except Exception as e:
                                     print(f"*An Error: {e}")
-                                    self.sendError(e)
+                                    self.addError(e)
                                     sys.exit()
                         except Exception as e:
                             print(f"*An Error in postback_US\n{e}")
-                            self.sendError(e)
+                            self.addError(e)
                             reply_message = "⚠️尋找管理員時發生錯誤，請再試一次。"    
                             self.api.push_message(user_id, TextSendMessage(text=reply_message))
             except Exception as e:
                 print(f"*An Error in implementV2_9-poostback_US {e}")       
-                self.sendError(e)
+                self.addError(e)
                 reply_message = "尋找錯誤，請再試一次或是洽 #9611資訊組"
                 self.api.push_message(user_id, TextSendMessage(text=reply_message))
 
@@ -943,7 +977,7 @@ class Bot():
                     self.reply_cancel(event, reply_message, False)
             except Exception as e:
                 print(f"*An Error in implementV2_9-postback_US {e}")
-                self.sendError(e)
+                self.addError(e)
                 reply_message = "資料庫錯誤，請再試一次或是洽 #9611資訊組"
                 self.api.push_message(user_id, TextSendMessage(text=reply_message))
                 
@@ -964,7 +998,7 @@ class Bot():
                                     self.Confirm_List[i-1] = ""
                             except Exception as e:
                                 print(f"{errorText}-handle_Admin1\n{e}")
-                                self.sendError(e)
+                                self.addError(e)
                                 self.api.push_message(user_id, TextSendMessage(text="資料庫異常，請查看錯誤訊息"))
                     else:
                         note = True
@@ -981,7 +1015,7 @@ class Bot():
                                 self.Confirm_List[i-1] = ""
                         except Exception as e:
                             print(f"{errorText}-handle_Admin1\n{e}")
-                            self.sendError(e)
+                            self.addError(e)
                             self.api.push_message(user_id, TextSendMessage(text="資料庫異常，請查看錯誤訊息"))
                     else:
                         note = True
@@ -996,7 +1030,7 @@ class Bot():
                             self.db.DelTeacherData(user)
                         except Exception as e:
                             print(f"*An Error in implementV2_9-handleAdmin1()\n{e}")
-                            self.sendError(e)
+                            self.addError(e)
                 self.Confirm_List = []
                 reply_message = "更新成功"
                 self.api.reply_message(
@@ -1006,7 +1040,7 @@ class Bot():
                     name =  self.db.getTeacher(user_id).name
                 except Exception as e:
                     print(f"{errorText}-handler_Admin1\n{e}")
-                    self.sendError(e)
+                    self.addError(e)
                     name = "其他管理員"
                 reply_message = f"{name} 已認證，您可繼續使用廣播功能"
                 try:
@@ -1194,7 +1228,7 @@ class Bot():
                             print("Error in findAdmin() There are no admin in database.")
                 except Exception as e:
                     print(f"*An Error {e}")
-                    self.sendError(e)
+                    self.addError(e)
 
         else:
             reply_message = "輸入錯誤, 請使用 "-" 來指定範圍，或是輸入特定數字"
@@ -1251,7 +1285,7 @@ class Bot():
                                     reply_message += "\n▶️ "+get.name+" (您)"+" "+get.office
                             except Exception as e:
                                 print(f"{errorText}-handler_Fs()\n{e}")
-                                self.sendError(e)
+                                self.addError(e)
                                 reply_message = "資料庫錯誤，請再試一次或是查看錯誤訊息"
                                 break
                         self.api.reply_message(event.reply_token, TextSendMessage(text=reply_message))
@@ -1277,10 +1311,10 @@ class Bot():
                     )
                     self.api.reply_message(event.reply_token, message)
                 else:
-                    self.SendButton_Adm(event)  
+                    self.SendButton_Adm(event, user_id)  
         except Exception as e:
-            print(f"*An Error in implementV2_9.py-handle_Fs() {e}")
-            self.sendError(e)
+            print(f"*An Error in implementV2_9.py-handle_Fs()\n{e}")
+            self.addError(e)
             reply_message = "尋找錯誤，請再試一次或是洽 #9611資訊組"
             self.api.push_message(user_id, TextSendMessage(text=reply_message))
   
@@ -1290,14 +1324,20 @@ class Bot():
     # 歷史訊息按紐處理
     def postback_Hs(self, event, user_id):
         history_data = []
-        history_data = self.db.getHistoryData(user_id)
-        if len(history_data) == 0:
-            reply_message = "無歷史訊息"
-            self.api.reply_message(event.reply_token, TextSendMessage(text=reply_message))
-        else:
-            reply_message = "以下是您最近發送的歷史訊息\n"
-            history_data = t.sort_history_message(history_data)
-            for i in range(1,len(history_data)+1, 1):
-                reply_message += f"▶️{i})  {history_data[i-1].time} To: {history_data[i-1].des_grade} \n\t {history_data[i-1].content} \n"
-            self.api.reply_message(event.reply_token, TextSendMessage(text=reply_message))
+        try:
+            history_data = self.db.getHistoryData(user_id)
+            if len(history_data) == 0:
+                reply_message = "無歷史訊息"
+                self.api.reply_message(event.reply_token, TextSendMessage(text=reply_message))
+            else:
+                reply_message = "以下是您最近發送的歷史訊息\n"
+                history_data = t.sort_history_message(history_data)
+                for i in range(1,len(history_data)+1, 1):
+                    reply_message += f"▶️{i})  {history_data[i-1].time} To: {history_data[i-1].des_grade} \n\t {history_data[i-1].content} \n"
+                self.api.reply_message(event.reply_token, TextSendMessage(text=reply_message))
+        except Exception as e:
+            print(f"{errorText}-postback_Hs\n {e}")
+            self.addError(e)
+            reply_message = "伺服器錯誤，請再試一次或是聯絡 #9611資訊組"
+            self.api.push_message(user_id, TextSendMessage(text=reply_message))
 

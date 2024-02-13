@@ -7,7 +7,7 @@ from linebot.exceptions import InvalidSignatureError
 from linebot import LineBotApi, WebhookHandler
 from flask import Flask, request, abort, jsonify, render_template
 from werkzeug.serving import make_server
-from datetime import datetime
+
 
 app = Flask(__name__)
 
@@ -31,12 +31,12 @@ class_list = ['701', '702', '703', '704', '705', '706', '801', '802', '803', '80
 grade_list = ['1', '2', '3', '4', '5','7', '8', '9']
 
 errorText = "*An Error inappV2.9"
-
 error_messages = []
 global errorIndex
 errorIndex = 1
 
-webhook_url = input("please enter url> ")
+
+
 
 @app.route("/callback", methods=['POST'])
 def callback():
@@ -67,24 +67,27 @@ def test():
         return  jsonify({"status": "success"})
     except Exception as e:
         print(e)
-        Manager.sendError(e)
+        Manager.addError(e)
     
 
 
-@app.route('/error', methods=['POST'])
-def raise_error():
-    global errorIndex
-    
-    # 獲取錯誤訊息
-    error_message = request.json.get('error_message', 'Unknown error')
-    error_message = {'id':errorIndex, "time": datetime.now().strftime("%d/%m/%Y %H:%M:%S"), "error": error_message}
-    # 将错误信息添加到列表中
-    error_messages.append(error_message)
-    errorIndex += 1
-    return jsonify({'message':'Error received successfully'})
+# @app.route('/error', methods=['POST'])
+# def raise_error():
+#     global errorIndex
+
+#     # 獲取錯誤訊息
+#     error_message = request.json.get('error_message', 'Unknown error')
+#     error_message = {'id':errorIndex, "time": datetime.now().strftime("%d/%m/%Y %H:%M:%S"), "error": error_message}
+#     # 将错误信息添加到列表中
+#     error_messages.append(error_message)
+#     errorIndex += 1
+#     return jsonify({'message':'Error received successfully'})
+
 @app.route('/')
 def show_errors():
+    
     # 渲染html模板，顯示錯誤訊息
+    error_messages = Manager.getErrorList()
     return render_template('errors.html', errors=error_messages)
 
 # 教師初次登入
@@ -103,7 +106,7 @@ def handle_follow(event):
             db.insertAdmin(user_id, {'name':name, 'office':office, 'verifyStat':1, 'isAdmin':1})
         except Exception as e:
             print(f"*An Error: {e}")
-            Manager.sendError(e)
+            Manager.addError(e)
             sys.exit()
         
 @handler.add(UnfollowEvent)
@@ -117,7 +120,7 @@ def handle_unfollow(event):
             print(f"Unfollowed by {user_id}")
     except Exception as e:
         print(e)
-        Manager.sendError(e)
+        Manager.addError(e)
     
 
 
@@ -147,10 +150,10 @@ action_handlers = {
     "@sound_yes": lambda event, user_id: (Manager.users[user_id].data.update({"sound": "1"}),setattr(Manager.users[user_id], 'status', 'Cs'), Manager.sendConfirm(event, user_id)) if Manager.users[user_id].status == 'Bs4' else None,
     "@sound_no": lambda event, user_id: (Manager.users[user_id].data.update({"sound": "0"}),setattr(Manager.users[user_id], 'status', 'Cs'), Manager.sendConfirm(event, user_id)) if Manager.users[user_id].status == 'Bs4' else None,
     "@Adm_func": lambda event, user_id: Manager.cmd_button(event) if Manager.users[user_id].status == 'Fs' else None,
-    "@reset_yes": lambda  user_id: (print("****Server Shuting Down****"), [line_bot_api.push_message(teacher, TextSendMessage(text="⚠️系統即將重新啟動，請稍後再試")) for teacher in db.GetAllTeacherID() if teacher != user_id], sys.exit()) if Manager.users[user_id].status == 'Rs' else None,
-    "@reset_no": lambda event, user_id: (setattr(Manager.users[user_id], 'status', 'Fs'), Manager.reply_message(event.reply_token, TextSendMessage(text="已取消"))) if Manager.users[user_id].status == 'Rs' else None,
+    "@reset_yes": lambda event, user_id: (print("****Server Shuting Down****"), [line_bot_api.push_message(teacher, TextSendMessage(text="⚠️系統即將重新啟動，請稍後再試")) for teacher in db.GetAllTeacherID() if teacher != user_id], sys.exit()) if Manager.users[user_id].status == 'Rs' else None,
+    "@reset_no": lambda event, user_id: (setattr(Manager.users[user_id], 'status', 'Fs'), line_bot_api.reply_message(event.reply_token, TextSendMessage(text="已取消"))) if Manager.users[user_id].status == 'Rs' else None,
     "@del_yes": lambda event, user_id: (setattr(Manager.users[user_id], 'status', 'Fs'), [line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_message)) for reply_message in [f"已刪除 {rows}筆資料" if rows > 0 else "無資料可刪除" if rows == 0 else f"錯誤:{rows}" for rows in [db.DelDataAll()]]]) if Manager.users[user_id].status == 'Ds' else None,
-    "@del_no": lambda event, user_id: (setattr(Manager.users[user_id], 'status', 'Fs'), Manager.reply_message(event.reply_token, TextSendMessage(text="已取消"))) if Manager.users[user_id].status == 'Ds' else None
+    "@del_no": lambda event, user_id: (setattr(Manager.users[user_id], 'status', 'Fs'), line_bot_api.reply_message(event.reply_token, TextSendMessage(text="已取消"))) if Manager.users[user_id].status == 'Ds' else None
 }
 
 # 確認發送訊息
@@ -169,6 +172,15 @@ def handle_postback(event):
     user_id = event.source.user_id
     backdata = dict(parse_qsl(event.postback.data))
 
+    if not db.findAdmin():
+        name = input("請輸入管理員名稱> ")
+        office = input("請輸入管理員所在處室> ")
+        try:
+            db.insertAdmin(user_id, {'name':name, 'office':office, 'verifyStat':1, 'isAdmin':1})
+        except Exception as e:
+            print(f"*An Error: {e}")
+            Manager.addError(e)
+            sys.exit()
     
     # 程式開啟後第一次加入，建立物件
     if user_id not in Manager.users:
@@ -187,7 +199,7 @@ def handle_postback(event):
             event.reply_token, TextSendMessage(text=reply_message))
         except Exception as e:
             print(f"{errorText}-handle_message()\n{e}")
-            Manager.sendError(e)
+            Manager.addError(e)
             reply_message = "資料庫異常，請再試一次或是洽詢 #9611資訊組"
             line_bot_api.push_message(user_id, TextSendMessage(text=reply_message))
 
@@ -224,6 +236,18 @@ status_handlers = {
 def handle_message(event):
     text = event.message.text
     user_id = event.source.user_id
+
+    if not db.findAdmin():
+        name = input("請輸入管理員名稱> ")
+        office = input("請輸入管理員所在處室> ")
+        try:
+            db.insertAdmin(user_id, {'name':name, 'office':office, 'verifyStat':1, 'isAdmin':1})
+        except Exception as e:
+            print(f"*An Error: {e}")
+            Manager.addError(e)
+            sys.exit()
+
+
     # 判斷是否有在字典中
     if user_id not in Manager.users:
         Manager.users[user_id] = Teacher(user_id, status = "Fs")
@@ -241,7 +265,7 @@ def handle_message(event):
             event.reply_token, TextSendMessage(text=reply_message))
         except Exception as e:
             print(f"{errorText}-handle_message()\n{e}")
-            Manager.sendError(e)
+            Manager.addError(e)
             reply_message = "資料庫異常，請再試一次或是洽詢 #9611資訊組"
             line_bot_api.push_message(user_id, TextSendMessage(text=reply_message))
         
