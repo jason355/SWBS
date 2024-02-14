@@ -16,9 +16,10 @@ def getTeacher(lineId):
     try:
         with Session() as session:
             teacher = session.query(tea_infor).filter(tea_infor.lineID == lineId).one_or_none()
-            if teacher is None:
-                return False
-            return teacher
+            
+            if teacher:
+                return teacher
+            return False
     except Exception as e:
         raise e
 
@@ -200,7 +201,7 @@ def findUnVerify():
 def GetAllTeacherID():
     try:
         with Session() as session:
-            teachers = [name for (name) in session.query(tea_infor.lineID).filter(tea_infor.verifyStat == 1).all()]
+            teachers = [name for (name,) in session.query(tea_infor.lineID).filter(tea_infor.verifyStat == 1).all()]
             if len(teachers) != 0:
                 return teachers
             else:

@@ -1279,10 +1279,11 @@ class Bot():
                         for user in AllTeacher:
                             try:
                                 get = self.db.getTeacher(user) # 因透過資料庫取得教師ID，故不會有空值
-                                if user != user_id:
-                                    reply_message += "\n▶️ "+ get.name+" "+get.office
-                                else:
-                                    reply_message += "\n▶️ "+get.name+" (您)"+" "+get.office
+                                if get:
+                                    if user != user_id:
+                                        reply_message += "\n▶️ "+ get.name+" "+get.office
+                                    else:
+                                        reply_message += "\n▶️ "+get.name+" (您)"+" "+get.office
                             except Exception as e:
                                 print(f"{errorText}-handler_Fs()\n{e}")
                                 self.addError(e)

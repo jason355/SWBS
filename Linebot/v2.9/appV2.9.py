@@ -247,7 +247,6 @@ def handle_message(event):
             Manager.addError(e)
             sys.exit()
 
-
     # 判斷是否有在字典中
     if user_id not in Manager.users:
         Manager.users[user_id] = Teacher(user_id, status = "Fs")
