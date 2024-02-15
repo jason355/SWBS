@@ -62,7 +62,6 @@ def insertTeaInfor(lineId, map = {}):
                     lineID=lineId, name=map['name'], office=map['office'], verifyStat=map['verifyStat'])
                 session.add(new_data)
                 session.commit()
-                
                 return True
             else:
                 session = Session()
@@ -147,9 +146,13 @@ def findAdmin():
 def isAdmin(lineId):
     try:
         with Session() as session:
-            admin = session.query(tea_infor.isAdmin).filter(tea_infor.lineID == lineId).one_or_none()
-            return admin
+            admin = session.query(tea_infor).filter(tea_infor.lineID == lineId).one_or_none()
+            if admin == None:
+                return None
+            else:
+                return admin.isAdmin
     except Exception as e:
+        print("Error")
         raise e
     
 
@@ -234,7 +237,6 @@ def DelDataAll():
     except Exception as e:
         return False
     
-
 
 try:
 

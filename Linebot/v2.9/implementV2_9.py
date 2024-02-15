@@ -567,7 +567,7 @@ class Bot():
                 sound = "有"
             elif self.users[user_id].data['sound'] == "0":
                 sound = "無"
-            reply_message = f"你確定要發送此則訊息嗎？\n教師名稱: {self.users[user_id].name}\n處室: {self.users[user_id].office}\n傳送班級: \n廣播內容:\n \n結束廣播時間: {self.users[user_id].data['finish_date']}\n廣播音效: {sound}"
+            reply_message = f"你確定要發送此則訊息嗎？\n教師名稱: {self.users[user_id].name}\n組別: {self.users[user_id].office}\n傳送班級: \n廣播內容:\n \n結束廣播時間: {self.users[user_id].data['finish_date']}\n廣播音效: {sound}"
             reply_len = t.calc_unicode_seg(reply_message)
             class_len = t.calc_unicode_seg(self.users[user_id].data['classStr'])
             content_Max = 160 - reply_len - class_len
@@ -580,7 +580,7 @@ class Bot():
                 content = self.users[user_id].data['content']
             # print(f"content:{content} len:{t.calc_unicode_seg(content)}")
 
-            reply_message = f"你確定要發送此則訊息嗎？\n教師名稱: {self.users[user_id].name}\n處室: {self.users[user_id].office}\n傳送班級: {self.users[user_id].data['classStr']}\n廣播內容:\n {content}\n結束廣播時間: {self.users[user_id].data['finish_date']}\n廣播音效: {sound}"
+            reply_message = f"你確定要發送此則訊息嗎？\n教師名稱: {self.users[user_id].name}\n組別: {self.users[user_id].office}\n傳送班級: {self.users[user_id].data['classStr']}\n廣播內容:\n {content}\n結束廣播時間: {self.users[user_id].data['finish_date']}\n廣播音效: {sound}"
             # print(t.calc_unicode_seg(reply_message), t.calc_unicode_seg(self.users[user_id].data['classStr']))
             message = TemplateSendMessage(
                 alt_text='Button template',
@@ -788,7 +788,7 @@ class Bot():
             teacher = self.db.getTeacher(user_id)
             if teacher:
                 self.users[user_id].status = "Ss1"
-                reply_message = f"您好 {teacher.name}\n您所在的處室:{teacher.office}\n重新設定教師個人資訊\n請輸入您的姓名"
+                reply_message = f"您好 {teacher.name}\n您所在的組別:{teacher.office}\n重新設定教師個人資訊\n請輸入您的姓名"
                 self.reply_cancel(event, reply_message)
             else:
                 self.users[user_id].status = "FSs1"
@@ -805,7 +805,7 @@ class Bot():
         status = self.users[user_id].status
         if len(text) < 10:
             self.users[user_id].name = text
-            reply = f"您好 {text} \n請輸入您所在的處室"
+            reply = f"您好 {text} \n請輸入您所在的組別"
             if status == "Ss1":
                 self.users[user_id].status = "Ss2"
                 self.reply_cancel(event, reply)
@@ -823,13 +823,13 @@ class Bot():
         status = self.users[user_id].status
         self.users[user_id].office = text
         if len(text) <= 5:
-            reply = f"您的名字為: {self.users[user_id].name}\n所在處室: {self.users[user_id].office}"
+            reply = f"您的名字為: {self.users[user_id].name}\n所在組別: {self.users[user_id].office}"
             if status == "FSs2":
                 self.sendSettingConfirm(event, reply, True)
             else:
                 self.sendSettingConfirm(event, reply, False)
         else:
-            reply = f"處室請勿超過5字，目前字數{len(text)}"
+            reply = f"組別請勿超過5字，目前字數{len(text)}"
             self.api.reply_message(event.reply_token, TextSendMessage(text=reply))
 
     # 個人資訊確認按鈕
@@ -898,7 +898,7 @@ class Bot():
                         self.api.reply_message(event.reply_token, TextSendMessage(text=reply_message))
                         self.users[user_id].status = "Fs"
                     else:
-                        reply_message = "已更新"
+                        reply_message = "✅已更新"
                         self.users[user_id].status = "Fs"
                         self.api.reply_message(event.reply_token, TextSendMessage(text=reply_message))
                 elif self.users[user_id].status == "FSs2" or self.users[user_id].status == "Ss2":
@@ -914,13 +914,13 @@ class Bot():
                     else:                    
                         if user_id not in self.Confirm_List:    
                             self.Confirm_List.append(user_id)
-                            reply_message = f"🔴有新教師加入‼\n以下為尚未驗證之列表，請透過數字鍵來表示要許可之用戶，其他將會被拒絕 ex 1~4 7 表示1到4號和7號都會許可\n代認證列表:"
+                            reply_message = f"🔴有新教師加入‼\n以下為尚未驗證之列表，請透過數字鍵來表示要許可之用戶，其他將會被拒絕 ex 1-4 7 表示1到4號和7號都會許可\n代認證列表:"
                             for i in range(len(self.Confirm_List)):
                                 # print(self.Confirm_List)
                                 try:
                                     temp = self.db.getTeacher(self.Confirm_List[i])
                                     if temp:
-                                        reply_message += f"\n▶️{i+1}) 教師: {temp.name} 處室: {temp.office}"
+                                        reply_message += f"\n▶️{i+1}) 教師: {temp.name} 組別: {temp.office}"
                                 except Exception as e:
                                     print(f"*An Error {e}")
                                     self.addError(e)
@@ -929,19 +929,19 @@ class Bot():
                             if AdminList:
                                 for Admin in AdminList:
                                     if Admin not in self.users:
-                                        self.users[Admin] = Teacher(Admin, isAdm=1, status="ACs")
+                                        self.users[Admin] = Teacher(Admin, isAdm=1, status="ACs", preStatus="Fs")
                                     else:
                                         self.users[Admin].preStatus = self.users[Admin].status
                                         self.users[Admin].status = "ACs"
                                     self.api.push_message(
                                         Admin, TextSendMessage(text=reply_message))
-                                reply = "已送交，等待管理員確認"
+                                reply = "✅已送交，等待管理員確認"
                                 self.api.reply_message(event.reply_token, TextSendMessage(text=reply))
                                 self.users[user_id].status = "Ss3"
                             else:
                                 reply_message = "⚠️資料庫錯誤，沒有管理員在資料中\n請聯絡 # 9611資訊組"
                                 name = input("請輸入管理員名稱> ")
-                                office = input("請輸入管理員所在處室> ")
+                                office = input("請輸入管理員所在組別> ")
                                 try:
                                     self.db.insertAdmin(user_id, {'name':name, 'office':office, 'verifyStat':1, 'isAdmin':1})
                                 except Exception as e:
@@ -984,18 +984,22 @@ class Bot():
     # 管理員許可1
     def handle_Admin1(self, event, user_id,text):
         result = re.findall(AdminConfirmPatter, text)
+    
         note = False
         if result != None:
             for scope in result:
+                print(scope)
                 if "-" in scope:
                     if int(scope[0:1]) >= 1 and int(scope[2:3]) <= len(self.Confirm_List):
                         for i in range(int(scope[0:1]), int(scope[2:3])+1, 1):
                             try:
                                 ack = self.db.modifyVerifyStat(self.Confirm_List[i-1])
-                                if ack:
+                                if ack == True:
                                     self.api.push_message(self.Confirm_List[i-1], TextSendMessage(text="管理員已認證，歡迎您加入"))
                                     self.users[self.Confirm_List[i-1]].status = "Fs"
                                     self.Confirm_List[i-1] = ""
+                                # else:
+                                #     self.api.reply_message(event.reply_token, TextSendMessage(text="已由"))
                             except Exception as e:
                                 print(f"{errorText}-handle_Admin1\n{e}")
                                 self.addError(e)
@@ -1008,11 +1012,11 @@ class Bot():
                     # print(scope)
                     if int(scope) >= 1 and int(scope) <= len(self.Confirm_List):
                         try:
-                            ack = self.db.modifyVerifyStat(self.Confirm_List[i-1])
-                            if ack:
-                                self.api.push_message(self.Confirm_List[i-1], TextSendMessage(text="管理員已認證，歡迎您加入"))
-                                self.users[self.Confirm_List[i-1]].status = "Fs"
-                                self.Confirm_List[i-1] = ""
+                            ack = self.db.modifyVerifyStat(self.Confirm_List[int(scope) - 1])
+                            if ack == True:
+                                self.api.push_message(self.Confirm_List[int(scope)-1], TextSendMessage(text="管理員已認證，歡迎您加入"))
+                                self.users[self.Confirm_List[int(scope)-1]].status = "Fs"
+                                self.Confirm_List[int(scope)-1] = ""
                         except Exception as e:
                             print(f"{errorText}-handle_Admin1\n{e}")
                             self.addError(e)
@@ -1052,7 +1056,11 @@ class Bot():
                                 self.api.push_message(
                                 Admin, TextSendMessage(text=reply_message))
                             else:
-                                self.users[Admin].status = self.users[Admin].preStatus
+                                prestatus = self.users[Admin].preStatus
+                                if prestatus != None:
+                                    self.users[Admin].status = prestatus
+                                else:
+                                    self.users[Admin].status = "Fs"
                                 print(f"Admin:{Admin} status:{self.users[Admin].status}")
                                 if Admin != user_id:
                                     self.api.push_message(
@@ -1100,7 +1108,7 @@ class Bot():
                                     
                                 # 個人資訊設定2
                                 elif self.users[Admin].status == "Ss2":
-                                    reply = f"您好 {self.users[Admin].name} \n請輸入您所在的處室"
+                                    reply = f"您好 {self.users[Admin].name} \n請輸入您所在的組別"
                                     message = TemplateSendMessage(
                                         alt_text='Text-Cancel template',
                                         template=ButtonsTemplate(
@@ -1120,7 +1128,7 @@ class Bot():
                                         alt_text='Button template',
                                         template=ButtonsTemplate(
                                             # 把廣播訊息重複在此
-                                            text=f"請問確認是否輸入錯誤\n名稱: {self.users[Admin].name}\n處室:{self.users[Admin].office}",
+                                            text=f"請問確認是否輸入錯誤\n名稱: {self.users[Admin].name}\n組別:{self.users[Admin].office}",
                                             actions=[
                                                 PostbackTemplateAction(
                                                     label='YES 我已確認',
@@ -1201,7 +1209,7 @@ class Bot():
                                         alt_text='Button template',
                                         template=ButtonsTemplate(
                                             # 把廣播訊息重複在此
-                                            text=f"你確定要發送此則訊息嗎？\n(請檢察將送出的訊息是否正確)\n教師名稱: {self.users[Admin].name}\n處室: {self.users[Admin].office}\n傳送班級: {self.users[Admin].data['classStr']}\n廣播內容:\n  {content}\n結束廣播時間:{self.users[Admin].data['finish_date']}",
+                                            text=f"你確定要發送此則訊息嗎？\n(請檢察將送出的訊息是否正確)\n教師名稱: {self.users[Admin].name}\n組別: {self.users[Admin].office}\n傳送班級: {self.users[Admin].data['classStr']}\n廣播內容:\n  {content}\n結束廣播時間:{self.users[Admin].data['finish_date']}",
                                             actions=[
                                                 PostbackTemplateAction(
                                                     label='YES 我已確認',
@@ -1230,10 +1238,10 @@ class Bot():
                     print(f"*An Error {e}")
                     self.addError(e)
 
-        else:
-            reply_message = "輸入錯誤, 請使用 "-" 來指定範圍，或是輸入特定數字"
-            self.api.reply_message(
-            event.reply_token, TextSendMessage(text=reply_message))
+            else:
+                reply_message = "輸入錯誤, 請使用 "-" 來指定範圍，或是輸入特定數字"
+                self.api.reply_message(
+                event.reply_token, TextSendMessage(text=reply_message))
 
 
     # 空閒

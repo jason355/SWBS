@@ -60,7 +60,7 @@ def test():
     try:
         id = db.getID(tea)
         if id :
-            line_bot_api.push_message(id.lineID, TextSendMessage(text=f"資料傳輸失敗\n原定派送班級 :{cls}\n訊息內容 :{message}\n發送時間 :{time}"))
+            line_bot_api.push_message(id.lineID, TextSendMessage(text=f"資料傳輸失敗\n原定派送班級 : {cls}\n訊息內容 : {message}\n發送時間 : {time}"))
             print(f"資料傳輸失敗\n原定派送班級\n:id:{id.lineID}\n{cls}\n訊息內容 :{message}\n發送時間 :{time}")
     
         print("data process success")
@@ -101,7 +101,7 @@ def handle_follow(event):
             event.reply_token, TextSendMessage(text=reply_message))
     else:
         name = input("請輸入管理員名稱> ")
-        office = input("請輸入管理員所在處室> ")
+        office = input("請輸入管理員所在組別> ")
         try:
             db.insertAdmin(user_id, {'name':name, 'office':office, 'verifyStat':1, 'isAdmin':1})
         except Exception as e:
@@ -174,7 +174,7 @@ def handle_postback(event):
 
     if not db.findAdmin():
         name = input("請輸入管理員名稱> ")
-        office = input("請輸入管理員所在處室> ")
+        office = input("請輸入管理員所在組別> ")
         try:
             db.insertAdmin(user_id, {'name':name, 'office':office, 'verifyStat':1, 'isAdmin':1})
         except Exception as e:
