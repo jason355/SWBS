@@ -362,8 +362,8 @@ class Bot():
             message = TemplateSendMessage(
                 alt_text='Button Template',
                 template=ButtonsTemplate(
-                    title="選擇群發年級!",
-                    text=f"請輸入傳送班級(請輸入中文字後的代號)\n 全校 0 \n 高一 1 \n 高二 2 \n 高三 3 \n 高中 4 \n 國中 5 \n 七年級 7 \n 八年級 8 \n 九年級 9\n 特定跳班級 班級三位數並用空格隔開",
+                    
+                    text=f"選擇群發年級!\n請輸入傳送班級(請輸入中文字後的代號)\n 全校 0 \n 高一 1 \n 高二 2 \n 高三 3 \n 高中 4 \n 國中 5 \n 七年級 7 \n 八年級 8 \n 九年級 9\n 特定跳班級 班級三位數並用空格隔開",
                     actions=[
                         PostbackTemplateAction(
                             label='更改成 個別發送',
