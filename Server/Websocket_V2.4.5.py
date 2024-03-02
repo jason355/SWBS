@@ -23,8 +23,9 @@ connected_clients = {}
 
 
 try:
-   # create database engine
+    # access enviroment variable to get db password
     database_pass = os.getenv("dbv1p")
+    # create database engine
     engine = create_engine(f"mysql+mysqlconnector://root:{database_pass}@localhost/dbV1", pool_size=50)
 
 
@@ -57,6 +58,7 @@ except SQLAlchemyError as e:
 
 
 async def handle_message(websocket):
+    # create a message list of every client's message
     msg = {}
     while True:
         # recive the class number which sent by client
@@ -77,16 +79,20 @@ async def handle_message(websocket):
             print(f"Other error: {e}")
             await websocket.close()
             break
+        # if the message was sent by a new client
         if websocket not in connected_clients:
-            # record the class
+            # record the message it sent as a class name
             connected_clients[websocket] = msg[websocket]
             print(f"*added new class*  class : {connected_clients[websocket]}")
+        # anyhow, record the message into msg list
         Cli_message[connected_clients[websocket]] = msg[websocket]
+    # while disconnected, delete the data of the client
     if websocket in connected_clients:
         del connected_clients[websocket]
 
 
 async def send_message_to_user(message, id, dest):
+    # define the funciton of sending process
     async def send(ws, message):
         try:
             # send message
@@ -94,30 +100,33 @@ async def send_message_to_user(message, id, dest):
         except Error as e:
             print("Error sending message to user : ", e)
         break_at = 0
-        while break_at < 60:
+        # waiting 60s for the client's return value to finish the sending process
+        while break_at < 600:
             if ws in connected_clients:
+                # detect if the message of the client in the msg list has updated to the return value
                 if Cli_message[connected_clients[ws]] == id:
                     print("data sending success, id : ", id)
+                    # if client did return the value, return "u"
                     return "s"
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.1)
             break_at += 1
-        # if there's error, return "u"
+        # if client didn't return the value, return "u"
         return "u"
-
     # Traverse every data
     for ws, cls in connected_clients.items():
-        # Determine if it's the correct class
+        # if it's the correct class, start sending process
         if cls == dest:
             return await send(ws, message)
 
 
 def send_message_to_line_bot(time, name, cls, content):
-    line_bot_server_url = "https://d8b6-140-119-99-80.ngrok-free.app/return"  # 請替換成實際的 Line Bot Server 的 URL
+    # setting the information of http sending
+    line_bot_server_url = "https://d8b6-140-119-99-80.ngrok-free.app/return"
     data = {"time": time, "name": name, "cls": cls, "content": content}
-
     try:
+        # post the data on the url
         response = requests.post(line_bot_server_url, json=data)
-        response.raise_for_status()  # 如果伺服器回傳非 2xx 狀態碼，則觸發異常
+        response.raise_for_status()
         print("Message sent successfully to Line Bot Server")
     except requests.exceptions.RequestException as e:
         print("Failed to send message to Line Bot Server. Error:", e)
@@ -132,9 +141,9 @@ async def New_data_added():
             try:
                 # fetch datas
                 check = db_session.query(data_access).filter_by(is_new=1).all()
-                # Determine if there's new datas
+                # if there are new datas
                 if check:
-                    # access every singel data
+                    # access every single data
                     for datas in check:
                         # produce for-cli-data
                         record = {
@@ -152,28 +161,29 @@ async def New_data_added():
                         data = []
                         data.append(record)
                         response = json.dumps(data, ensure_ascii=False)
-                        # declare check var
+                        # declare check variable
                         sent = None
-                        # sent to a specified class
-                        if datas.des_class and datas.des_grade:
-                            # check if the class availible
-                            if datas.des_grade[1] == "7" or datas.des_grade[1] == "8" or datas.des_grade[1] == "9":
-                                dest = datas.des_grade[1] + datas.des_grade[0] + datas.des_class
-                            else:
-                                dest = datas.des_grade + datas.des_class
-                            if dest in connected_clients.values():
-                                # send message
-                                sent = await send_message_to_user(response, str(datas.id), dest)
+                        # modify the format of sending destination
+                        if datas.des_grade[1] == "7" or datas.des_grade[1] == "8" or datas.des_grade[1] == "9":
+                            dest = datas.des_grade[1] + datas.des_grade[0] + datas.des_class
+                        else:
+                            dest = datas.des_grade + datas.des_class
+                        # check if the class in the clients list
+                        if dest in connected_clients.values():
+                            # send message
+                            sent = await send_message_to_user(response, str(datas.id), dest)
                         # check if sending unsuccessful
                         if sent == "u":
                             print("data sending time exceeded, ID = ", datas.id)
+                            # send message to linebot to inform the teacher the sending was failed
                             try:
                                 send_message_to_line_bot(datas.time.strftime("%Y-%m-%d %H:%M:%S"), datas.name, dest, datas.content)
                             except Error as e:
                                 print("Error Sending message to linebot :", e)
+                        # anyhow, set the status of the message to old message
                         if sent:
                             try:
-                                # update the data's condition and commit to database
+                                # update the data's status and commit to database
                                 db_session.query(data_access).filter_by(id=datas.id).update({"is_new": 0})
                                 db_session.commit()
                             except Error as e:
