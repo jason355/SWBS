@@ -1,5 +1,7 @@
 # 校園無聲廣播系統 SSBS (School Soundless Broadcasting System)
 
+[![Static Badge](https://img.shields.io/badge/Android%20App-v1.6.1-blue)
+](https://github.com/jason355/CSBS-Yunan/releases/tag/161)
 - [校園無聲廣播系統 SSBS (School Soundless Broadcasting System)](#校園無聲廣播系統-ssbs-school-soundless-broadcasting-system)
   - [Full map](#full-map)
     - [Overall](#overall)
