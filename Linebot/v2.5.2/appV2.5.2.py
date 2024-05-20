@@ -13,8 +13,8 @@ app = Flask(__name__)
 
 # mydb = datafun.initialize_db()
 
-line_bot_api = LineBotApi('OQUfgG/04yXRUmv660eCqHp7zedaGzRBKzb1WCJ8gzNp7F7p+Yh8Iaod7/e3wLRk2H6Fh/3zig5l58zlcHaQjPO1qrhS/qt3rEXqszLj9SjcyuJUMJeSlWsW62Zb0983w8O050LDJ0XYsEgh2aI+QQdB04t89/1O/w1cDnyilFU=') # 
-handler = WebhookHandler('a41d4e206f57d19d2569eb415aaeabc0') # 
+line_bot_api = LineBotApi('') # 
+handler = WebhookHandler('') # 
 
 
 users = {}
