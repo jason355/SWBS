@@ -40,13 +40,13 @@ async def monitor_server(uri, check_interval, restart_command):
 
 if __name__ == "__main__":
     # WebSocket服务器的URI
-    websocket_uri = "ws://192.168.56.1:8000"
+    websocket_uri = "ws://140.119.99.17:80"
 
     # 检查间隔时间（秒）
     check_interval = 1
 
     # 重启服务器的命令（根据你的服务器配置进行修改）
-    restart_command = r'python "C:\Users\yuxia\SWBS\server\py-server demo\V2.5\Websocket_V2.5.py"'
+    restart_command = r'python "C:\CSBS\run\Websocket_V2.5.py"'
 
     # 开始监控
     asyncio.get_event_loop().run_until_complete(monitor_server(websocket_uri, check_interval, restart_command))
