@@ -10,8 +10,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 
 # Please set up internet information here
-ip = "192.168.56.1"
-port = 8000
+ip = "140.119.99.17"
+port = 80
 line_bot_server_url = "https://d8b6-140-119-99-80.ngrok-free.app/return"
 # Please set up internet information here
 
@@ -35,8 +35,8 @@ try:
         __tablename__ = 'data'
         id = Column(Integer, primary_key=True)
         name = Column(String(15))
-        #lineID = Column(String(45))
-        #hash = Column(String(40))
+        lineID = Column(String(45))
+        hash = Column(String(40))
         content = Column(String(300))
         is_new = Column(Integer)
         time = Column(String(25))
