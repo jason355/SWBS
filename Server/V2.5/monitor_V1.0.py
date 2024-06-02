@@ -27,7 +27,7 @@ def restart_server(command):
         print("Restarting server...")
         # 使用 `start` 命令在新的命令行窗口中运行命令
         subprocess.Popen(f'start cmd /c {command}', shell=True)
-        print("Server restart command issued successfully\n", datetime.datetime.now().time())
+        print("Server restart command issued successfully\n", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     except subprocess.CalledProcessError as e:
         print(f"Failed to restart server: {e}")
 
